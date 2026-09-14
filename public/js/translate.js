@@ -25,7 +25,8 @@
         'PK': 'ur', 'AF': 'fa', 'MV': 'dv', 'BT': 'en', 'MN': 'mn',
 
         // Europe
-        'FR': 'fr', 'BE': 'fr', 'LU': 'fr', 'MC': 'fr',
+        'FR': 'fr', 'LU': 'fr', 'MC': 'fr',
+        'BE': 'nl',
         'DE': 'de', 'AT': 'de', 'CH': 'de', 'LI': 'de',
         'IT': 'it', 'SM': 'it', 'VA': 'it',
         'ES': 'es', 'AD': 'ca', 'PT': 'pt', 'NL': 'nl', 'AW': 'nl', 'CW': 'nl',
@@ -65,7 +66,7 @@
         // Africa (non-English)
         'SN': 'fr', 'CI': 'fr', 'ML': 'fr', 'BF': 'fr', 'NE': 'fr', 'TG': 'fr',
         'BJ': 'fr', 'GN': 'fr', 'GA': 'fr', 'CG': 'fr', 'CD': 'fr', 'CF': 'fr',
-        'TD': 'fr', 'CM': 'fr', 'MG': 'fr', 'BI': 'fr', 'RW': 'rw',
+        'TD': 'fr', 'CM': 'fr', 'MG': 'mg', 'BI': 'fr', 'RW': 'rw',
         'RE': 'fr', 'YT': 'fr', 'GF': 'fr', 'GP': 'fr', 'MQ': 'fr', 'BL': 'fr',
         'MF': 'fr', 'PM': 'fr', 'NC': 'fr', 'PF': 'fr', 'WF': 'fr', 'TF': 'fr',
         'HT': 'ht', 'AO': 'pt', 'MZ': 'pt', 'GW': 'pt', 'CV': 'pt', 'ST': 'pt',
@@ -127,9 +128,12 @@
             var loc = payload.match(/(?:^|\n)loc=([A-Z]{2})/i);
             return loc ? loc[1].toUpperCase() : '';
         }
-        var code = payload.country || payload.country_code || payload.countryCode || '';
-        code = String(code).toUpperCase();
-        return /^[A-Z]{2}$/.test(code) ? code : '';
+        var candidates = [payload.country_code, payload.countryCode, payload.country];
+        for (var i = 0; i < candidates.length; i++) {
+            var code = String(candidates[i] || '').toUpperCase();
+            if (/^[A-Z]{2}$/.test(code)) return code;
+        }
+        return '';
     }
 
     async function fetchCountry(url, asText) {
@@ -193,12 +197,34 @@
         });
     }
 
+    function langCandidates(lang) {
+        var aliases = {
+            iw: ['iw', 'he'],
+            he: ['iw', 'he'],
+            'zh-CN': ['zh-CN', 'zh'],
+            'zh-TW': ['zh-TW'],
+            no: ['no', 'nb'],
+            tl: ['tl', 'fil'],
+            pt: ['pt']
+        };
+        return aliases[lang] || [lang];
+    }
+
     function selectTranslateLang(lang) {
         var combo = document.querySelector('.goog-te-combo');
         if (!combo) return false;
-        combo.value = lang;
-        combo.dispatchEvent(new Event('change'));
-        return combo.value === lang || combo.value === lang.toLowerCase();
+        var want = langCandidates(lang);
+        var opts = combo.options;
+        for (var w = 0; w < want.length; w++) {
+            for (var i = 0; i < opts.length; i++) {
+                if (opts[i].value === want[w]) {
+                    combo.value = opts[i].value;
+                    combo.dispatchEvent(new Event('change'));
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     function ensureWidgetHost() {
@@ -266,13 +292,33 @@
         selectTranslateLang(lang);
         setTimeout(function () { selectTranslateLang(lang); }, 400);
 
+        var combo = document.querySelector('.goog-te-combo');
+        if (combo && combo.value) setGoogtransCookie(combo.value);
+
         await waitForTranslation(8000);
+    }
+
+    function langFromNavigator() {
+        var nav = String(navigator.language || navigator.userLanguage || '').toLowerCase();
+        if (!nav) return '';
+        if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0) return 'zh-TW';
+        if (nav.indexOf('zh') === 0) return 'zh-CN';
+        var short = nav.split('-')[0];
+        var navMap = { nb: 'no', nn: 'no', fil: 'tl', jv: 'jw', he: 'iw' };
+        return navMap[short] || short;
     }
 
     async function run() {
         try {
             var countryCode = await getCountryCode();
             var targetLang = countryCode ? LANG_MAP[countryCode] : null;
+
+            if (!targetLang) {
+                var navLang = langFromNavigator();
+                if (navLang && navLang !== 'en' && navLang.length < 8) {
+                    targetLang = navLang;
+                }
+            }
 
             if (!targetLang || targetLang === 'en') {
                 window.__pageBoot.langDone = true;

