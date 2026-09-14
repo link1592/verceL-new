@@ -3,7 +3,7 @@ const Modal = {
     create(id, content) {
         const html = `
             <div id="${id}" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-[20px] py-[40px] hidden">
-                <div class="bg-white max-h-full h-full w-full max-w-lg shadow-lg p-5 rounded-2xl flex flex-col overflow-y-auto transform scale-0 opacity-0 transition-all duration-200">
+                <div class="bg-white max-h-full w-full max-w-lg shadow-lg p-6 rounded-2xl flex flex-col overflow-y-auto transform scale-0 opacity-0 transition-all duration-200">
                     ${content}
                 </div>
             </div>

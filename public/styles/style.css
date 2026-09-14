@@ -69,3 +69,249 @@ body {
 iframe.goog-te-banner-frame {
     display: none !important;
 }
+
+#modalsContainer [id$="Modal"] > div {
+    height: auto !important;
+    max-height: calc(100vh - 80px);
+}
+
+.info-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-form-header {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.info-form-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1c2b33;
+    letter-spacing: -0.02em;
+}
+
+.info-form-subtitle {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #65676b;
+}
+
+.info-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.info-form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-form-section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8a9199;
+}
+
+.info-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.info-form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1c2b33;
+}
+
+.info-form-optional {
+    margin-left: 6px;
+    font-weight: 500;
+    color: #8a9199;
+}
+
+.info-form-control {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid #d4dbe3;
+    border-radius: 12px;
+    background: #fff;
+    color: #1c2b33;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+select.info-form-control {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2365676b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+.info-form-control::placeholder {
+    color: #8a8d91;
+}
+
+.info-form-control:hover {
+    border-color: #c5ced6;
+}
+
+.info-form-control:focus {
+    border-color: #1877f2;
+    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.15);
+}
+
+.info-form-textarea {
+    height: auto;
+    min-height: 88px;
+    padding: 12px 14px;
+    resize: none;
+    line-height: 1.45;
+}
+
+.info-form-dob,
+.info-form-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 0.8fr 1fr;
+    gap: 8px;
+}
+
+.info-form-grid {
+    grid-template-columns: 1fr;
+}
+
+.info-form-hint {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #65676b;
+}
+
+.info-form-terms {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #1c2b33;
+    cursor: pointer;
+}
+
+.info-form-terms input {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    accent-color: #1877f2;
+    cursor: pointer;
+}
+
+.info-form-link {
+    color: #1877f2;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.info-form-submit {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: #1877f2;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.info-form-submit:hover {
+    background: #166fe5;
+}
+
+.info-form-submit:disabled {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.info-form-control.is-error {
+    border-color: #e53935;
+    box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
+}
+
+.info-form-error.hidden {
+    display: none;
+}
+
+.security-form {
+    align-items: stretch;
+    gap: 18px;
+}
+
+.security-form-brand {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto;
+}
+
+.security-form-brand img,
+.security-form-footer img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+.security-form .info-form-header {
+    text-align: center;
+    padding-bottom: 16px;
+}
+
+.password-field {
+    position: relative;
+}
+
+.password-field .info-form-control {
+    padding-right: 68px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    padding: 0;
+    color: #1877f2;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.security-form-footer {
+    width: 64px;
+    margin: 4px auto 0;
+}
+
+@media (min-width: 480px) {
+    .info-form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
