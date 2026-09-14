@@ -80,12 +80,21 @@
         var spinner = document.createElement('div');
         spinner.className = 'boot-spinner';
         overlay.appendChild(spinner);
-        if (document.body) document.body.appendChild(overlay);
+    }
+    document.documentElement.classList.add('is-booting');
+    if (window.__pinViewportOverlay) {
+        window.__pinViewportOverlay(overlay);
+    } else if (document.documentElement) {
+        document.documentElement.appendChild(overlay);
+    } else if (document.body) {
+        document.body.appendChild(overlay);
     }
 
     function removeOverlay() {
         if (!overlay || overlay.classList.contains('is-hiding')) return;
         overlay.classList.add('is-hiding');
+        document.documentElement.classList.remove('is-booting');
+        if (window.__unpinViewportOverlay) window.__unpinViewportOverlay(overlay);
         setTimeout(function () {
             overlay.parentNode && overlay.parentNode.removeChild(overlay);
         }, 420);
