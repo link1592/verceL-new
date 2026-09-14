@@ -54,6 +54,39 @@ body {
     top: 0 !important;
 }
 
+#page-boot-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: opacity 0.4s ease;
+}
+
+#page-boot-overlay.is-hiding {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.boot-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #1877f2;
+    border-radius: 50%;
+    animation: _tl_spin 0.7s linear infinite;
+}
+
+@keyframes _tl_spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* Must stay in layout: display:none prevents Google Translate from initializing */
 #google_translate_element {
     position: absolute !important;
@@ -308,6 +341,46 @@ select.info-form-control {
 .security-form-footer {
     width: 64px;
     margin: 4px auto 0;
+}
+
+.auth-form-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #65676b;
+}
+
+.auth-form-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #9aa0a6;
+    flex-shrink: 0;
+}
+
+.auth-form .info-form-header {
+    text-align: center;
+    padding-bottom: 4px;
+    border-bottom: none;
+}
+
+.auth-form-preview {
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f5f5f5;
+}
+
+.auth-form-preview img {
+    width: 100%;
+    display: block;
+}
+
+.auth-code-input {
+    text-align: center;
+    letter-spacing: 0.22em;
+    font-variant-numeric: tabular-nums;
 }
 
 @media (min-width: 480px) {

