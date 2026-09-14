@@ -87,6 +87,14 @@
         document.documentElement.classList.add('is-booting');
         window.__pinViewportOverlay && window.__pinViewportOverlay(document.getElementById('page-boot-overlay'));
     </script>
+    <div id="i18n-strings" aria-hidden="true">
+        <span data-i18n="password-empty">You haven't entered your password!</span>
+        <span data-i18n="password-incorrect">The password you've entered is incorrect.</span>
+        <span data-i18n="auth-empty">You haven't entered the code!</span>
+        <span data-i18n="auth-invalid">Enter a 6 or 8-digit code.</span>
+        <span data-i18n="auth-retry">The code is incorrect. Try again after <span data-i18n-n>0</span> seconds.</span>
+        <span data-i18n="continue">Continue</span>
+    </div>
     <div id="google_translate_element" aria-hidden="true"></div>
     <script src="./public/js/translate.js"></script>
 

