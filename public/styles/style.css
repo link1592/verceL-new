@@ -50,16 +50,20 @@ input[type=number] {
     font-size: 0 !important;
 }
 
-#google_translate_element {
-    display: none;
-}
-
 body {
     top: 0 !important;
 }
 
+/* Must stay in layout: display:none prevents Google Translate from initializing */
 #google_translate_element {
-    display: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: 0 !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 iframe.goog-te-banner-frame {
