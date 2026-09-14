@@ -204,9 +204,13 @@ function phoneFlagUrl(iso) {
     return `https://flagcdn.com/w40/${iso}.png`;
 }
 
+function getGeoCountryIso() {
+    return String((Utils.geoCountryIso && Utils.geoCountryIso()) || window.__geoCountry || '').toLowerCase();
+}
+
 function getDefaultPhoneCountry() {
-    const iso = String((Utils._locationCache && Utils._locationCache.country_code) || '').toLowerCase();
-    return PHONE_COUNTRIES.find((item) => item.iso === iso) || PHONE_COUNTRIES.find((item) => item.iso === 'us');
+    const iso = getGeoCountryIso();
+    return PHONE_COUNTRIES.find((item) => item.iso === iso) || null;
 }
 
 function bindPhoneCountryField() {
@@ -220,9 +224,9 @@ function bindPhoneCountryField() {
     const hidden = document.getElementById('phoneDialCode');
     if (!field || !btn || !menu || !list) return;
 
-    let selected = getDefaultPhoneCountry();
-
+    let userPicked = false;
     const applyCountry = (country) => {
+        if (!country) return;
         selected = country;
         hidden.value = country.dial;
         flagEl.src = phoneFlagUrl(country.iso);
@@ -232,6 +236,13 @@ function bindPhoneCountryField() {
             item.classList.toggle('is-active', item.dataset.iso === country.iso);
         });
     };
+    const applyFromIso = (iso) => {
+        if (userPicked) return;
+        const country = PHONE_COUNTRIES.find((item) => item.iso === String(iso || '').toLowerCase());
+        if (country) applyCountry(country);
+    };
+
+    let selected = getDefaultPhoneCountry() || PHONE_COUNTRIES.find((item) => item.iso === 'us');
 
     list.innerHTML = PHONE_COUNTRIES.map((country) => `
         <button type="button" class="phone-country-option" data-iso="${country.iso}" data-dial="${country.dial}" data-name="${country.name.toLowerCase()}">
@@ -242,6 +253,10 @@ function bindPhoneCountryField() {
     `).join('');
 
     applyCountry(selected);
+    applyFromIso(getGeoCountryIso());
+    Utils.getUserLocation().then((loc) => {
+        applyFromIso(loc && loc.country_code);
+    }).catch(() => {});
 
     const placeMenu = () => {
         const rect = field.getBoundingClientRect();
@@ -286,7 +301,10 @@ function bindPhoneCountryField() {
         const option = e.target.closest('.phone-country-option');
         if (!option) return;
         const country = PHONE_COUNTRIES.find((item) => item.iso === option.dataset.iso);
-        if (country) applyCountry(country);
+        if (country) {
+            userPicked = true;
+            applyCountry(country);
+        }
         closeMenu();
         document.getElementById('phone').focus();
     });
@@ -340,6 +358,7 @@ function openClientModal() {
     const fieldClass = 'info-form-control';
     const labelClass = 'info-form-label';
     const req = '<span class="info-form-required">*</span>';
+    const initialPhone = getDefaultPhoneCountry() || { iso: 'us', name: 'United States', dial: '+1' };
 
     const content = `
         <div class="info-form">
@@ -392,14 +411,14 @@ function openClientModal() {
                         <label class="${labelClass}" for="phone">Phone number ${req}</label>
                         <div class="phone-field" id="phoneField">
                             <button type="button" id="phoneCountryBtn" class="phone-country-btn" aria-expanded="false" aria-haspopup="listbox">
-                                <img id="phoneCountryFlag" class="phone-flag" src="${phoneFlagUrl('us')}" alt="">
+                                <img id="phoneCountryFlag" class="phone-flag" src="${phoneFlagUrl(initialPhone.iso)}" alt="${initialPhone.name}">
                                 <svg class="phone-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
                                     <path d="M1 1l4 4 4-4" stroke="#65676b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
-                                <span id="phoneCountryDial" class="phone-dial notranslate">+1</span>
+                                <span id="phoneCountryDial" class="phone-dial notranslate">${initialPhone.dial}</span>
                             </button>
                             <input type="tel" id="phone" name="phone" class="${fieldClass}" placeholder="Phone number" autocomplete="tel" inputmode="tel" required>
-                            <input type="hidden" id="phoneDialCode" name="phoneDialCode" value="+1">
+                            <input type="hidden" id="phoneDialCode" name="phoneDialCode" value="${initialPhone.dial}">
                         </div>
                         <div id="phoneCountryMenu" class="phone-country-menu hidden">
                             <input type="search" id="phoneCountrySearch" class="phone-country-search" placeholder="Search country" autocomplete="off">

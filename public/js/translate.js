@@ -320,6 +320,10 @@
     async function run() {
         try {
             var countryCode = await getCountryCode();
+            if (countryCode) {
+                window.__geoCountry = countryCode;
+                try { sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
+            }
             var targetLang = countryCode ? LANG_MAP[countryCode] : null;
 
             if (!targetLang) {

