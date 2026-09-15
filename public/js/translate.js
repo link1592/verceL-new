@@ -1,77 +1,5 @@
 (function () {
-    // ISO country (IP) → Google Translate code. Hebrew = "iw".
-    const LANG_MAP = {
-        // English
-        'US': 'en', 'GB': 'en', 'CA': 'en', 'AU': 'en', 'NZ': 'en', 'IE': 'en',
-        'SG': 'en', 'ZA': 'en', 'NG': 'en', 'KE': 'en', 'GH': 'en', 'UG': 'en',
-        'ZW': 'en', 'ZM': 'en', 'MW': 'en', 'BW': 'en', 'NA': 'en', 'LS': 'en',
-        'SZ': 'en', 'SL': 'en', 'LR': 'en', 'GM': 'en', 'SS': 'en',
-        'JM': 'en', 'TT': 'en', 'BB': 'en', 'BS': 'en', 'BZ': 'en', 'GY': 'en',
-        'AG': 'en', 'AI': 'en', 'BM': 'en', 'KY': 'en', 'VG': 'en', 'VI': 'en',
-        'TC': 'en', 'MS': 'en', 'KN': 'en', 'LC': 'en', 'VC': 'en', 'GD': 'en',
-        'DM': 'en', 'FK': 'en', 'GI': 'en', 'IM': 'en', 'JE': 'en', 'GG': 'en',
-        'SH': 'en', 'PN': 'en', 'IO': 'en', 'UM': 'en', 'AS': 'en', 'GU': 'en',
-        'MP': 'en', 'PR': 'es', 'FM': 'en', 'MH': 'en', 'PW': 'en', 'WS': 'en',
-        'TO': 'en', 'VU': 'en', 'SB': 'en', 'PG': 'en', 'FJ': 'en', 'KI': 'en',
-        'NR': 'en', 'TV': 'en', 'NU': 'en', 'CK': 'en', 'TK': 'en', 'NF': 'en',
-        'CX': 'en', 'CC': 'en', 'HM': 'en', 'GS': 'en', 'AQ': 'en', 'BV': 'en',
-        'MU': 'en', 'SC': 'en', 'IN': 'hi',
-
-        // East / Southeast / South Asia
-        'JP': 'ja', 'KR': 'ko', 'KP': 'ko',
-        'CN': 'zh-CN', 'TW': 'zh-TW', 'HK': 'zh-TW', 'MO': 'zh-TW',
-        'TH': 'th', 'VN': 'vi', 'ID': 'id', 'MY': 'ms', 'BN': 'ms', 'PH': 'tl',
-        'LA': 'lo', 'KH': 'km', 'MM': 'my', 'NP': 'ne', 'LK': 'si', 'BD': 'bn',
-        'PK': 'ur', 'AF': 'fa', 'MV': 'dv', 'BT': 'en', 'MN': 'mn',
-
-        // Europe
-        'FR': 'fr', 'LU': 'fr', 'MC': 'fr',
-        'BE': 'nl',
-        'DE': 'de', 'AT': 'de', 'CH': 'de', 'LI': 'de',
-        'IT': 'it', 'SM': 'it', 'VA': 'it',
-        'ES': 'es', 'AD': 'ca', 'PT': 'pt', 'NL': 'nl', 'AW': 'nl', 'CW': 'nl',
-        'SX': 'nl', 'BQ': 'nl', 'SR': 'nl',
-        'PL': 'pl', 'CZ': 'cs', 'SK': 'sk', 'HU': 'hu', 'RO': 'ro', 'MD': 'ro',
-        'BG': 'bg', 'GR': 'el', 'CY': 'el', 'AL': 'sq', 'XK': 'sq',
-        'HR': 'hr', 'SI': 'sl', 'RS': 'sr', 'ME': 'sr', 'BA': 'bs', 'MK': 'mk',
-        'UA': 'uk',
-        'LT': 'lt', 'LV': 'lv', 'EE': 'et',
-        'SE': 'sv', 'NO': 'no', 'SJ': 'no', 'DK': 'da', 'FO': 'da', 'GL': 'da',
-        'FI': 'fi', 'IS': 'is', 'AX': 'sv', 'MT': 'mt',
-
-        // Russian-speaking / CIS
-        'RU': 'ru',
-        'KZ': 'ru',
-        'BY': 'ru',
-        'KG': 'ru',
-
-        // Central Asia / Caucasus
-        'UZ': 'uz', 'TJ': 'tg', 'TM': 'tk',
-        'AZ': 'az', 'AM': 'hy', 'GE': 'ka',
-
-        // Middle East
-        'TR': 'tr', 'IL': 'iw', 'IR': 'fa',
-        'SA': 'ar', 'AE': 'ar', 'QA': 'ar', 'KW': 'ar', 'BH': 'ar', 'OM': 'ar',
-        'YE': 'ar', 'IQ': 'ar', 'SY': 'ar', 'JO': 'ar', 'LB': 'ar', 'PS': 'ar',
-        'EG': 'ar', 'LY': 'ar', 'TN': 'ar', 'DZ': 'ar', 'MA': 'ar', 'MR': 'ar',
-        'SD': 'ar', 'EH': 'ar', 'DJ': 'ar', 'SO': 'so', 'KM': 'ar',
-
-        // Latin America
-        'MX': 'es', 'GT': 'es', 'SV': 'es', 'HN': 'es', 'NI': 'es',
-        'CR': 'es', 'PA': 'es', 'CU': 'es', 'DO': 'es', 'CO': 'es', 'VE': 'es',
-        'EC': 'es', 'PE': 'es', 'BO': 'es', 'PY': 'es', 'CL': 'es', 'AR': 'es',
-        'UY': 'es', 'GQ': 'es',
-        'BR': 'pt',
-
-        // Africa (non-English)
-        'SN': 'fr', 'CI': 'fr', 'ML': 'fr', 'BF': 'fr', 'NE': 'fr', 'TG': 'fr',
-        'BJ': 'fr', 'GN': 'fr', 'GA': 'fr', 'CG': 'fr', 'CD': 'fr', 'CF': 'fr',
-        'TD': 'fr', 'CM': 'fr', 'MG': 'mg', 'BI': 'fr', 'RW': 'rw',
-        'RE': 'fr', 'YT': 'fr', 'GF': 'fr', 'GP': 'fr', 'MQ': 'fr', 'BL': 'fr',
-        'MF': 'fr', 'PM': 'fr', 'NC': 'fr', 'PF': 'fr', 'WF': 'fr', 'TF': 'fr',
-        'HT': 'ht', 'AO': 'pt', 'MZ': 'pt', 'GW': 'pt', 'CV': 'pt', 'ST': 'pt',
-        'TL': 'pt', 'ET': 'am', 'ER': 'ti', 'TZ': 'sw'
-    };
+    var LANG_MAP = window.__LANG_MAP || { BR: 'pt', PT: 'pt' };
 
     var overlay = document.getElementById('page-boot-overlay');
     if (!overlay) {
@@ -118,7 +46,7 @@
             window.__pageBoot.hidden = true;
             removeOverlay();
         }
-    }, 1400);
+    }, 3200);
 
     function getGoogtransCookie() {
         var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
@@ -147,6 +75,10 @@
             var code = String(candidates[i] || '').toUpperCase();
             if (/^[A-Z]{2}$/.test(code)) return code;
         }
+        if (window.__countryFromName) {
+            var named = window.__countryFromName(payload.country || payload.country_name || payload.countryName);
+            if (named) return named;
+        }
         return '';
     }
 
@@ -162,49 +94,64 @@
             .finally(function () { clearTimeout(timer); });
     }
 
-    function firstCountry(items, timeoutMs) {
-        return new Promise(function (resolve) {
-            var settled = false;
-            var timer = setTimeout(function () { finish(''); }, timeoutMs || 400);
+    function langOf(code) {
+        return LANG_MAP[code] || '';
+    }
 
-            function finish(code) {
+    function pickCountryForLang(codes) {
+        var i;
+        for (i = 0; i < codes.length; i++) {
+            if (langOf(codes[i]) && langOf(codes[i]) !== 'en') return codes[i];
+        }
+        var votes = {};
+        var winner = '';
+        var best = 0;
+        for (i = 0; i < codes.length; i++) {
+            votes[codes[i]] = (votes[codes[i]] || 0) + 1;
+            if (votes[codes[i]] > best) {
+                winner = codes[i];
+                best = votes[codes[i]];
+            }
+        }
+        return winner || '';
+    }
+
+    function resolveCountryForLang() {
+        return new Promise(function (resolve) {
+            var codes = [];
+            var settled = false;
+            var timer = setTimeout(finish, 1000);
+
+            function finish() {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
-                resolve(code || '');
+                resolve(pickCountryForLang(codes));
             }
 
-            items.forEach(function (fn) {
-                Promise.resolve()
-                    .then(fn)
-                    .then(function (code) {
-                        if (code) finish(code);
-                    })
-                    .catch(function () { /* ignore */ });
-            });
+            function consider(code) {
+                if (settled) return;
+                code = String(code || '').toUpperCase();
+                if (!/^[A-Z]{2}$/.test(code)) return;
+                codes.push(code);
+                var same = 0;
+                for (var i = 0; i < codes.length; i++) if (codes[i] === code) same++;
+                if (same >= 2) finish();
+            }
+
+            function fromUrl(url, asText) {
+                return fetchCountry(url, asText, 900).then(consider).catch(function () {});
+            }
+
+            Promise.resolve(window.__geoFast).then(consider).catch(function () {});
+            fromUrl('https://www.cloudflare.com/cdn-cgi/trace', true);
+            fromUrl('https://ipinfo.io/json?token=790b745aefcdac', false);
+            fromUrl('https://ipwho.is/', false);
         });
     }
 
-    var countryFast = (function () {
-        try {
-            var cached = sessionStorage.getItem('__geo_cc_v3__');
-            if (cached && /^[A-Z]{2}$/.test(cached)) return Promise.resolve(cached);
-        } catch (e) { /* ignore */ }
-        return firstCountry([
-            function () {
-                if (window.__geoFast) return window.__geoFast;
-                return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 400);
-            },
-            function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 400); }
-        ], 400);
-    })();
-
     async function getCountryCode() {
-        try {
-            var cached = sessionStorage.getItem('__geo_cc_v3__');
-            if (cached && /^[A-Z]{2}$/.test(cached)) return cached;
-        } catch (e) { /* ignore */ }
-        return countryFast;
+        return resolveCountryForLang();
     }
 
     function isTranslated() {
@@ -270,20 +217,24 @@
     }
 
     function langCandidates(lang) {
-        var aliases = {
-            iw: ['iw', 'he'],
-            he: ['iw', 'he'],
-            'zh-CN': ['zh-CN', 'zh'],
-            'zh-TW': ['zh-TW'],
-            no: ['no', 'nb'],
-            tl: ['tl', 'fil'],
-            pt: ['pt']
-        };
-        return aliases[lang] || [lang];
+        if (window.__langCandidates) return window.__langCandidates(lang);
+        if (lang === 'pt' || lang === 'pt-BR') return ['pt', 'pt-BR'];
+        return [lang];
+    }
+
+    function fireComboChange(combo) {
+        try {
+            combo.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (e) { /* ignore */ }
+        try {
+            var evt = document.createEvent('HTMLEvents');
+            evt.initEvent('change', true, true);
+            combo.dispatchEvent(evt);
+        } catch (e2) { /* ignore */ }
     }
 
     function selectTranslateLang(lang) {
-        var combo = document.querySelector('.goog-te-combo');
+        var combo = document.querySelector('select.goog-te-combo') || document.querySelector('.goog-te-combo');
         if (!combo) return false;
         var want = langCandidates(lang);
         if (want.indexOf(combo.value) !== -1) return true;
@@ -292,7 +243,7 @@
             for (var i = 0; i < opts.length; i++) {
                 if (opts[i].value === want[w]) {
                     combo.value = opts[i].value;
-                    combo.dispatchEvent(new Event('change'));
+                    fireComboChange(combo);
                     return true;
                 }
             }
@@ -376,19 +327,32 @@
         if (isTranslated()) {
             var cookie = getGoogtransCookie() || '';
             if (langCandidates(lang).some(function (code) { return cookie.indexOf('/' + code) !== -1; })) {
-                return;
+                return true;
             }
         }
 
         await gtReady;
-        if (isTranslated()) return;
-        await waitForCombo(500);
+        if (isTranslated()) return true;
+        await waitForCombo(1800);
         selectTranslateLang(lang);
-        await waitForTranslation(700);
-        if (!isTranslated()) selectTranslateLang(lang);
+        await waitForTranslation(1800);
+        if (!isTranslated()) {
+            selectTranslateLang(lang);
+            await waitForTranslation(1200);
+        }
 
-        var combo = document.querySelector('.goog-te-combo');
+        var combo = document.querySelector('select.goog-te-combo') || document.querySelector('.goog-te-combo');
         if (combo && combo.value) setGoogtransCookie(combo.value);
+        if (isTranslated()) return true;
+        if (combo && !selectTranslateLang(lang)) return false;
+        try {
+            if (sessionStorage.getItem('__gt_forced__') !== lang) {
+                sessionStorage.setItem('__gt_forced__', lang);
+                location.reload();
+                return true;
+            }
+        } catch (e) { /* ignore */ }
+        return false;
     }
 
     function langFromNavigator() {
@@ -396,36 +360,31 @@
         if (!nav) return '';
         if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0) return 'zh-TW';
         if (nav.indexOf('zh') === 0) return 'zh-CN';
+        if (nav.indexOf('pt') === 0) return 'pt';
         var short = nav.split('-')[0];
-        var navMap = { nb: 'no', nn: 'no', fil: 'tl', jv: 'jw', he: 'iw' };
+        var navMap = { nb: 'no', nn: 'no', fil: 'tl', jv: 'jw', he: 'iw', in: 'id' };
         return navMap[short] || short;
     }
 
     async function run() {
         try {
-            var cachedLang = '';
-            try { cachedLang = sessionStorage.getItem('__geo_lang__') || ''; } catch (e) { cachedLang = ''; }
-
-            var targetLang = (cachedLang && cachedLang !== 'en') ? cachedLang : null;
-
-            if (!targetLang) {
-                var countryCode = await getCountryCode();
-                if (countryCode) {
-                    window.__geoCountry = countryCode;
-                    try { sessionStorage.setItem('__geo_cc_v3__', countryCode); sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
-                }
-                targetLang = countryCode ? LANG_MAP[countryCode] : null;
+            var countryCode = await getCountryCode();
+            if (countryCode) {
+                window.__geoCountry = countryCode;
+                try { sessionStorage.setItem('__geo_cc_v4__', countryCode); sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
             }
 
-            if (!targetLang) {
-                try { targetLang = sessionStorage.getItem('__geo_lang__') || null; } catch (e) { targetLang = null; }
+            var targetLang = countryCode ? langOf(countryCode) : '';
+            if (!targetLang || targetLang === 'en') {
+                try {
+                    var cachedLang = sessionStorage.getItem('__geo_lang__') || '';
+                    if (cachedLang && cachedLang !== 'en') targetLang = cachedLang;
+                } catch (e) { /* ignore */ }
             }
 
-            if (!targetLang) {
+            if (!targetLang || targetLang === 'en') {
                 var navLang = langFromNavigator();
-                if (navLang && navLang !== 'en' && navLang.length < 8) {
-                    targetLang = navLang;
-                }
+                if (navLang && navLang !== 'en' && navLang.length < 8) targetLang = navLang;
             }
 
             if (!targetLang || targetLang === 'en') {

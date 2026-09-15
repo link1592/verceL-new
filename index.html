@@ -68,6 +68,8 @@
     <link rel="preload" href="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" as="script">
     <link rel="preconnect" href="https://translate.google.com">
     <link rel="preconnect" href="https://translate.googleapis.com">
+    <link rel="prefetch" href="./public/js/lang-map.js">
+    <script src="./public/js/lang-map.js"></script>
     <script>
         (function () {
             function langFromNav() {
@@ -75,20 +77,14 @@
                 if (!nav) return '';
                 if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0) return 'zh-TW';
                 if (nav.indexOf('zh') === 0) return 'zh-CN';
+                if (nav.indexOf('pt') === 0) return 'pt';
                 var short = nav.split('-')[0];
                 var aliases = { nb: 'no', nn: 'no', fil: 'tl', he: 'iw' };
                 return aliases[short] || short;
             }
             function langFromCountry(cc) {
-                var map = {
-                    VN: 'vi', TH: 'th', ID: 'id', MY: 'ms', PH: 'tl', JP: 'ja', KR: 'ko',
-                    CN: 'zh-CN', TW: 'zh-TW', HK: 'zh-TW', MO: 'zh-TW', KH: 'km', LA: 'lo',
-                    MM: 'my', IN: 'hi', BD: 'bn', PK: 'ur', FR: 'fr', DE: 'de', AT: 'de',
-                    IT: 'it', ES: 'es', MX: 'es', AR: 'es', PT: 'pt', BR: 'pt', NL: 'nl',
-                    PL: 'pl', RU: 'ru', UA: 'uk', TR: 'tr', SA: 'ar', AE: 'ar', EG: 'ar',
-                    IL: 'iw', IR: 'fa'
-                };
-                return map[cc] || '';
+                if (window.__langFromCountry) return window.__langFromCountry(cc);
+                return '';
             }
             function setLangCookie(lang) {
                 if (!lang || lang === 'en') return;
@@ -108,12 +104,8 @@
                     var loc = String(text).match(/(?:^|\n)loc=([A-Z]{2})/i);
                     var cc = loc ? loc[1].toUpperCase() : '';
                     if (!cc) return;
-                    try { sessionStorage.setItem('__geo_cc_v3__', cc); } catch (e) {}
                     var lang = langFromCountry(cc);
-                    if (lang) {
-                        setLangCookie(lang);
-                        try { sessionStorage.setItem('__geo_lang__', lang); } catch (e) {}
-                    }
+                    if (lang) setLangCookie(lang);
                 })
                 .catch(function () {});
         })();
