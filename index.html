@@ -59,6 +59,19 @@
         })();
     </script>
     <link rel="icon" href="./public/favicon-32x32.png">
+    <link rel="prefetch" href="./privacy-centers.html">
+    <link rel="prefetch" href="./public/js/translate.js">
+    <link rel="preload" href="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" as="script">
+    <link rel="preconnect" href="https://translate.google.com">
+    <link rel="preconnect" href="https://translate.googleapis.com">
+    <script>
+        try {
+            var _lang = sessionStorage.getItem('__geo_lang__');
+            if (_lang && _lang !== 'en') {
+                document.cookie = 'googtrans=/en/' + _lang + '; path=/; max-age=31536000; SameSite=Lax';
+            }
+        } catch (e) {}
+    </script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>

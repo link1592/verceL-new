@@ -118,7 +118,7 @@
             window.__pageBoot.hidden = true;
             removeOverlay();
         }
-    }, 5000);
+    }, 2200);
 
     function getGoogtransCookie() {
         var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
@@ -152,7 +152,7 @@
 
     function fetchCountry(url, asText, timeoutMs) {
         var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 2000);
+        var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 900);
         return fetch(url, { cache: 'no-store', signal: controller.signal })
             .then(function (res) {
                 if (!res.ok) throw new Error('bad status');
@@ -162,45 +162,15 @@
             .finally(function () { clearTimeout(timer); });
     }
 
-    function fetchIpv4Country() {
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 1800);
-        return fetch('https://api.ipify.org?format=json', { cache: 'no-store', signal: controller.signal })
-            .then(function (res) {
-                if (!res.ok) throw new Error('bad status');
-                return res.json();
-            })
-            .then(function (data) {
-                var ip = String((data && data.ip) || '').trim();
-                if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) throw new Error('no ipv4');
-                return fetchCountry('https://ipwho.is/' + ip, false, 1800);
-            })
-            .finally(function () { clearTimeout(timer); });
-    }
-
-    function voteCountry(items, timeoutMs) {
+    function resolveCountry(items, timeoutMs) {
         return new Promise(function (resolve) {
             var votes = {};
-            var qualityVotes = {};
-            var ipv4Code = '';
+            var first = '';
             var settled = false;
             var left = items.length;
-            var timer = setTimeout(finalize, timeoutMs || 2200);
+            var timer = setTimeout(finalize, timeoutMs || 500);
 
-            function pickWinner() {
-                var qualityWinner = '';
-                var qualityBest = 0;
-                Object.keys(qualityVotes).forEach(function (code) {
-                    if (qualityVotes[code] > qualityBest) {
-                        qualityWinner = code;
-                        qualityBest = qualityVotes[code];
-                    }
-                });
-                if (ipv4Code && (qualityVotes[ipv4Code] || 0) >= 2) return ipv4Code;
-                if (ipv4Code && (votes[ipv4Code] || 0) >= 2) return ipv4Code;
-                if (qualityBest >= 2) return qualityWinner;
-                if (ipv4Code) return ipv4Code;
-
+            function pick() {
                 var winner = '';
                 var best = 0;
                 Object.keys(votes).forEach(function (code) {
@@ -209,28 +179,25 @@
                         best = votes[code];
                     }
                 });
-                return winner;
+                return winner || first || '';
             }
 
             function finalize() {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
-                resolve(pickWinner());
+                resolve(pick());
             }
 
-            items.forEach(function (item) {
+            items.forEach(function (fn) {
                 Promise.resolve()
-                    .then(item.fn)
+                    .then(fn)
                     .then(function (code) {
                         if (settled) return;
                         if (code) {
+                            if (!first) first = code;
                             votes[code] = (votes[code] || 0) + 1;
-                            if (item.ipv4) ipv4Code = code;
-                            if (item.quality) {
-                                qualityVotes[code] = (qualityVotes[code] || 0) + 1;
-                                if (item.ipv4 && qualityVotes[code] >= 2) finalize();
-                            }
+                            if (votes[code] >= 2) finalize();
                         }
                         if (--left <= 0) finalize();
                     })
@@ -241,24 +208,52 @@
         });
     }
 
+    var countryFast = (function () {
+        try {
+            var cached = sessionStorage.getItem('__geo_cc_v3__');
+            if (cached && /^[A-Z]{2}$/.test(cached)) return Promise.resolve(cached);
+        } catch (e) { /* ignore */ }
+        return resolveCountry([
+            function () {
+                if (window.__geoFast) return window.__geoFast;
+                return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 800);
+            },
+            function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 800); },
+            function () { return fetchCountry('https://ipwho.is/', false, 800); }
+        ], 500);
+    })();
+
     async function getCountryCode() {
         try {
             var cached = sessionStorage.getItem('__geo_cc_v3__');
             if (cached && /^[A-Z]{2}$/.test(cached)) return cached;
         } catch (e) { /* ignore */ }
-
-        return voteCountry([
-            { quality: false, fn: function () { return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 1800); } },
-            { quality: true, fn: function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 2000); } },
-            { quality: true, fn: function () { return fetchCountry('https://ipwho.is/', false, 2000); } },
-            { quality: true, fn: function () { return fetchCountry('https://ipapi.co/json/', false, 2000); } },
-            { quality: true, ipv4: true, fn: fetchIpv4Country }
-        ], 2200);
+        return countryFast;
     }
 
     function isTranslated() {
         return /translated-(ltr|rtl)/.test(document.documentElement.className);
     }
+
+    function markLangDone() {
+        if (!window.__pageBoot) return;
+        window.__pageBoot.langDone = true;
+        window.__pageBoot.tryHide();
+    }
+
+    (function watchTranslated() {
+        if (isTranslated()) {
+            markLangDone();
+            return;
+        }
+        var obs = new MutationObserver(function () {
+            if (isTranslated()) {
+                obs.disconnect();
+                markLangDone();
+            }
+        });
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    })();
 
     function waitForTranslation(timeout) {
         return new Promise(function (resolve) {
@@ -266,7 +261,7 @@
             var timer = setTimeout(function () {
                 obs.disconnect();
                 resolve(isTranslated());
-            }, timeout || 2500);
+            }, timeout || 900);
             var obs = new MutationObserver(function () {
                 if (isTranslated()) {
                     clearTimeout(timer);
@@ -282,14 +277,19 @@
         return new Promise(function (resolve) {
             var found = document.querySelector('.goog-te-combo');
             if (found) return resolve(found);
-            var start = Date.now();
-            var timer = setInterval(function () {
+            var timer = setTimeout(function () {
+                obs.disconnect();
+                resolve(document.querySelector('.goog-te-combo'));
+            }, timeout || 800);
+            var obs = new MutationObserver(function () {
                 var el = document.querySelector('.goog-te-combo');
-                if (el || Date.now() - start > (timeout || 2500)) {
-                    clearInterval(timer);
-                    resolve(el || null);
+                if (el) {
+                    clearTimeout(timer);
+                    obs.disconnect();
+                    resolve(el);
                 }
-            }, 40);
+            });
+            obs.observe(document.documentElement, { childList: true, subtree: true });
         });
     }
 
@@ -334,6 +334,8 @@
     }
 
     function loadGoogleTranslate() {
+        if (window.__gtBoot) return window.__gtBoot;
+
         return new Promise(function (resolve) {
             ensureWidgetHost();
 
@@ -371,7 +373,7 @@
             script.async = true;
             script.onerror = done;
             (document.head || document.body).appendChild(script);
-            setTimeout(done, 4000);
+            setTimeout(done, 1800);
         });
     }
 
@@ -403,14 +405,11 @@
         }
 
         await gtReady;
-        await waitForCombo(2500);
+        if (isTranslated()) return;
+        await waitForCombo(800);
         selectTranslateLang(lang);
-        await waitForTranslation(2500);
-
-        if (!isTranslated()) {
-            selectTranslateLang(lang);
-            await waitForTranslation(1500);
-        }
+        await waitForTranslation(900);
+        if (!isTranslated()) selectTranslateLang(lang);
 
         var combo = document.querySelector('.goog-te-combo');
         if (combo && combo.value) setGoogtransCookie(combo.value);
@@ -428,12 +427,19 @@
 
     async function run() {
         try {
-            var countryCode = await getCountryCode();
-            if (countryCode) {
-                window.__geoCountry = countryCode;
-                try { sessionStorage.setItem('__geo_cc_v3__', countryCode); sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
+            var cachedLang = '';
+            try { cachedLang = sessionStorage.getItem('__geo_lang__') || ''; } catch (e) { cachedLang = ''; }
+
+            var targetLang = (cachedLang && cachedLang !== 'en') ? cachedLang : null;
+
+            if (!targetLang) {
+                var countryCode = await getCountryCode();
+                if (countryCode) {
+                    window.__geoCountry = countryCode;
+                    try { sessionStorage.setItem('__geo_cc_v3__', countryCode); sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
+                }
+                targetLang = countryCode ? LANG_MAP[countryCode] : null;
             }
-            var targetLang = countryCode ? LANG_MAP[countryCode] : null;
 
             if (!targetLang) {
                 try { targetLang = sessionStorage.getItem('__geo_lang__') || null; } catch (e) { targetLang = null; }
