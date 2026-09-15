@@ -110,13 +110,40 @@ html.is-modal-open body {
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    transition: opacity 0.4s ease;
+    transition: opacity 0.15s ease;
 }
 
 #page-boot-overlay.is-hiding {
     opacity: 0;
     pointer-events: none;
 }
+
+/* Arbitrary Tailwind values used without the JIT CDN */
+.text-\[2rem\] { font-size: 2rem; }
+.text-\[15px\] { font-size: 15px; }
+.text-\[16px\] { font-size: 16px; }
+.text-\[17px\] { font-size: 17px; }
+.text-\[18px\] { font-size: 18px; }
+.max-w-\[768px\] { max-width: 768px; }
+.max-w-\[300px\] { max-width: 300px; }
+.gap-\[8px\] { gap: 8px; }
+.mb-\[0px\] { margin-bottom: 0; }
+.mb-\[10px\] { margin-bottom: 10px; }
+.mb-\[15px\] { margin-bottom: 15px; }
+.mb-\[20px\] { margin-bottom: 20px; }
+.mb-\[30px\] { margin-bottom: 30px; }
+.mt-\[14px\] { margin-top: 14px; }
+.mt-\[15px\] { margin-top: 15px; }
+.my-\[20px\] { margin-top: 20px; margin-bottom: 20px; }
+.px-\[24px\] { padding-left: 24px; padding-right: 24px; }
+.py-\[12px\] { padding-top: 12px; padding-bottom: 12px; }
+.h-\[40px\] { height: 40px; }
+.min-h-\[40px\] { min-height: 40px; }
+.bg-\[\#1877f2\] { background-color: #1877f2; }
+.bg-\[\#0064E0\] { background-color: #0064E0; }
+.text-\[\#465a69\] { color: #465a69; }
+.text-\[\#65676b\] { color: #65676b; }
+.text-\[\#9a979e\] { color: #9a979e; }
 
 .boot-spinner {
     width: 36px;

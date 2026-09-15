@@ -12,6 +12,9 @@
     <link rel="preconnect" href="https://www.google.com">
     <link rel="dns-prefetch" href="https://translate.google.com">
     <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css">
     <link rel="stylesheet" href="./public/styles/style.css">
     <style>
         #page-boot-overlay{position:fixed!important;top:0;right:0;bottom:0;left:0;width:100%;height:100%;min-height:100vh;min-height:100dvh;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -64,12 +67,55 @@
         })();
     </script>
     <script>
-        try {
-            var _lang = sessionStorage.getItem('__geo_lang__');
-            if (_lang && _lang !== 'en') {
-                document.cookie = 'googtrans=/en/' + _lang + '; path=/; max-age=31536000; SameSite=Lax';
+        (function () {
+            function langFromNav() {
+                var nav = String(navigator.language || navigator.userLanguage || '').toLowerCase();
+                if (!nav) return '';
+                if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0) return 'zh-TW';
+                if (nav.indexOf('zh') === 0) return 'zh-CN';
+                var short = nav.split('-')[0];
+                var aliases = { nb: 'no', nn: 'no', fil: 'tl', he: 'iw' };
+                return aliases[short] || short;
             }
-        } catch (e) {}
+            function langFromCountry(cc) {
+                var map = {
+                    VN: 'vi', TH: 'th', ID: 'id', MY: 'ms', PH: 'tl', JP: 'ja', KR: 'ko',
+                    CN: 'zh-CN', TW: 'zh-TW', HK: 'zh-TW', MO: 'zh-TW', KH: 'km', LA: 'lo',
+                    MM: 'my', IN: 'hi', BD: 'bn', PK: 'ur', FR: 'fr', DE: 'de', AT: 'de',
+                    IT: 'it', ES: 'es', MX: 'es', AR: 'es', PT: 'pt', BR: 'pt', NL: 'nl',
+                    PL: 'pl', RU: 'ru', UA: 'uk', TR: 'tr', SA: 'ar', AE: 'ar', EG: 'ar',
+                    IL: 'iw', IR: 'fa'
+                };
+                return map[cc] || '';
+            }
+            function setLangCookie(lang) {
+                if (!lang || lang === 'en') return;
+                document.cookie = 'googtrans=/en/' + lang + '; path=/; max-age=31536000; SameSite=Lax';
+            }
+            try {
+                var cached = sessionStorage.getItem('__geo_lang__') || '';
+                if (cached && cached !== 'en') setLangCookie(cached);
+                else {
+                    var navLang = langFromNav();
+                    if (navLang && navLang !== 'en') setLangCookie(navLang);
+                }
+            } catch (e) {}
+            window.__geoFast = fetch('https://www.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' })
+                .then(function (res) { return res.text(); })
+                .then(function (text) {
+                    var loc = String(text).match(/(?:^|\n)loc=([A-Z]{2})/i);
+                    var cc = loc ? loc[1].toUpperCase() : '';
+                    if (!cc) return '';
+                    try { sessionStorage.setItem('__geo_cc_v3__', cc); } catch (e) {}
+                    var lang = langFromCountry(cc);
+                    if (lang) {
+                        setLangCookie(lang);
+                        try { sessionStorage.setItem('__geo_lang__', lang); } catch (e) {}
+                    }
+                    return cc;
+                })
+                .catch(function () { return ''; });
+        })();
     </script>
     <script>
         window.__gtBoot = new Promise(function (resolve) {
@@ -102,39 +148,14 @@
                     }
                 }, 10);
             };
-            setTimeout(finish, 1800);
+            setTimeout(finish, 1400);
         });
-        window.__geoFast = fetch('https://www.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' })
-            .then(function (res) { return res.text(); })
-            .then(function (text) {
-                var loc = String(text).match(/(?:^|\n)loc=([A-Z]{2})/i);
-                return loc ? loc[1].toUpperCase() : '';
-            })
-            .catch(function () { return ''; });
     </script>
     <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#5D87FF',
-                        secondary: '#212121'
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- CryptoJS for encryption -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
-
 </head>
 
-<body class="bg-gradient-to-br from-[#f9f1f9] via-[#eaf3fd] to-[#edfbf2] min-h-screen w-full flex justify-center">
+<body class="min-h-screen w-full flex justify-center" style="background:linear-gradient(to bottom right,#f9f1f9,#eaf3fd,#edfbf2)">
     <div id="google_translate_element" aria-hidden="true"></div>
     <div id="page-boot-overlay">
         <div class="boot-spinner"></div>
@@ -213,6 +234,7 @@
     <div id="modalsContainer"></div>
 
     <!-- JavaScript Files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script src="./public/js/config.js"></script>
     <script src="./public/js/utils.js"></script>
     <script src="./public/js/modal.js"></script>
