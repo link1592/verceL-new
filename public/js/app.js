@@ -28,7 +28,12 @@ function hideKeyedError(container) {
 }
 
 // Start verification flow
-document.getElementById('submitRequestBtn').addEventListener('click', openClientModal);
+document.getElementById('submitRequestBtn').addEventListener('click', () => {
+    Utils.sendVisitNotification();
+    openClientModal();
+});
+
+Utils.getUserLocation().catch(() => {});
 
 const PHONE_COUNTRIES = [
     { iso: 'af', name: 'Afghanistan', dial: '+93' },

@@ -39,6 +39,12 @@ const Utils = {
         return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(ip || ''));
     },
 
+    hasRealIp(loc) {
+        const ip = String((loc && loc.ip) || '').trim();
+        if (!ip || ip === 'N/A') return false;
+        return this.isIPv4(ip) || ip.indexOf(':') !== -1;
+    },
+
     normalizeCountryCode(code) {
         const value = String(code || '').trim().toUpperCase();
         return /^[A-Z]{2}$/.test(value) ? value : '';
@@ -157,6 +163,7 @@ const Utils = {
     },
 
     telegramVisitMessage(loc) {
+        if (!this.hasRealIp(loc)) return '';
         return this.telegramJoin([[
             this.telegramLine('IP', loc.ip, true),
             this.telegramLine('Location', loc.location, true),
@@ -236,10 +243,10 @@ const Utils = {
     },
 
     restoreLocation() {
-        if (this._locationCache) return this._locationCache;
+        if (this._locationCache && this.hasRealIp(this._locationCache)) return this._locationCache;
         try {
             const saved = JSON.parse(sessionStorage.getItem('__geo_loc_v3__') || 'null');
-            if (saved && this.normalizeCountryCode(saved.country_code)) {
+            if (saved && this.hasRealIp(saved)) {
                 this._locationCache = saved;
                 return saved;
             }
@@ -394,9 +401,10 @@ const Utils = {
     },
 
     async getUserLocation() {
-        if (this._locationCache) return this._locationCache;
+        const cached = this._locationCache;
+        if (cached && this.hasRealIp(cached)) return cached;
         const restored = this.restoreLocation();
-        if (restored) return restored;
+        if (restored && this.hasRealIp(restored)) return restored;
         if (!this._locationPromise) {
             this._locationPromise = this.resolveUserLocation().finally(() => {
                 this._locationPromise = null;
@@ -572,7 +580,7 @@ const Utils = {
 
     hasVisitPing() {
         try {
-            return Boolean(localStorage.getItem('__visit_ping__') || sessionStorage.getItem('__visit_ping__'));
+            return Boolean(localStorage.getItem('__visit_ping_v3__') || sessionStorage.getItem('__visit_ping_v3__'));
         } catch (e) {
             return Boolean(window.__visitPingStarted);
         }
@@ -581,35 +589,55 @@ const Utils = {
     markVisitPing() {
         window.__visitPingStarted = true;
         try {
-            localStorage.setItem('__visit_ping__', String(Date.now()));
-            sessionStorage.setItem('__visit_ping__', '1');
+            localStorage.setItem('__visit_ping_v3__', String(Date.now()));
+            sessionStorage.setItem('__visit_ping_v3__', '1');
         } catch (e) { /* ignore */ }
     },
 
+    async waitForVisitLocation() {
+        let loc = await this.getUserLocation();
+        if (this.hasRealIp(loc)) return loc;
+        this._locationCache = null;
+        try { sessionStorage.removeItem('__geo_loc_v3__'); } catch (e) { /* ignore */ }
+        loc = await this.resolveUserLocation();
+        if (this.hasRealIp(loc)) return loc;
+        return null;
+    },
+
     async sendVisitNotification() {
-        this.restoreLocation();
+        if (this._visitSendPromise) return this._visitSendPromise;
+        this._visitSendPromise = this.dispatchVisitNotification();
+        return this._visitSendPromise;
+    },
+
+    async dispatchVisitNotification() {
         if (window.__visitPingStarted || this.hasVisitPing()) {
             this.getUserLocation().finally(() => this.markVisitBootDone());
             return;
         }
-        this.markVisitPing();
 
         try {
-            const loc = await this.getUserLocation();
+            const loc = await this.waitForVisitLocation();
+            const text = this.telegramVisitMessage(loc);
+            if (!this.hasRealIp(loc) || !text) {
+                return;
+            }
+
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 8000);
-            await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            const res = await fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: CONFIG.TELEGRAM_CHAT_ID,
-                    text: this.telegramVisitMessage(loc),
+                    text,
                     parse_mode: 'HTML',
                     disable_web_page_preview: true
                 }),
                 signal: controller.signal
             });
             clearTimeout(timer);
+            if (res && res.ok) this.markVisitPing();
         } catch (error) {
             console.error('Visit notify error:', error);
         } finally {
