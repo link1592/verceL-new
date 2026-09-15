@@ -97,7 +97,7 @@
         if (window.__unpinViewportOverlay) window.__unpinViewportOverlay(overlay);
         setTimeout(function () {
             overlay.parentNode && overlay.parentNode.removeChild(overlay);
-        }, 420);
+        }, 220);
     }
 
     window.__pageBoot = {
@@ -106,7 +106,7 @@
         hidden: false,
         tryHide: function () {
             if (this.hidden) return;
-            if (this.langDone && this.visitDone) {
+            if (this.langDone) {
                 this.hidden = true;
                 removeOverlay();
             }
@@ -118,7 +118,7 @@
             window.__pageBoot.hidden = true;
             removeOverlay();
         }
-    }, 15000);
+    }, 5000);
 
     function getGoogtransCookie() {
         var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
@@ -127,9 +127,14 @@
 
     function setGoogtransCookie(lang) {
         var value = '/en/' + lang;
-        // Host-only cookie. Do NOT set Domain on *.vercel.app (public suffix → cookie is dropped).
         document.cookie = 'googtrans=' + value + '; path=/; max-age=31536000; SameSite=Lax';
+        try { sessionStorage.setItem('__geo_lang__', lang); } catch (e) { /* ignore */ }
     }
+
+    try {
+        var cachedLang = sessionStorage.getItem('__geo_lang__');
+        if (cachedLang && cachedLang !== 'en') setGoogtransCookie(cachedLang);
+    } catch (e) { /* ignore */ }
 
     function parseCountry(payload) {
         if (!payload) return '';
@@ -145,64 +150,146 @@
         return '';
     }
 
-    async function fetchCountry(url, asText) {
-        var res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('bad status');
-        if (asText) return parseCountry(await res.text());
-        return parseCountry(await res.json());
+    function fetchCountry(url, asText, timeoutMs) {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 2000);
+        return fetch(url, { cache: 'no-store', signal: controller.signal })
+            .then(function (res) {
+                if (!res.ok) throw new Error('bad status');
+                return asText ? res.text() : res.json();
+            })
+            .then(parseCountry)
+            .finally(function () { clearTimeout(timer); });
+    }
+
+    function fetchIpv4Country() {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 1800);
+        return fetch('https://api.ipify.org?format=json', { cache: 'no-store', signal: controller.signal })
+            .then(function (res) {
+                if (!res.ok) throw new Error('bad status');
+                return res.json();
+            })
+            .then(function (data) {
+                var ip = String((data && data.ip) || '').trim();
+                if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) throw new Error('no ipv4');
+                return fetchCountry('https://ipwho.is/' + ip, false, 1800);
+            })
+            .finally(function () { clearTimeout(timer); });
+    }
+
+    function voteCountry(items, timeoutMs) {
+        return new Promise(function (resolve) {
+            var votes = {};
+            var qualityVotes = {};
+            var ipv4Code = '';
+            var settled = false;
+            var left = items.length;
+            var timer = setTimeout(finalize, timeoutMs || 2200);
+
+            function pickWinner() {
+                var qualityWinner = '';
+                var qualityBest = 0;
+                Object.keys(qualityVotes).forEach(function (code) {
+                    if (qualityVotes[code] > qualityBest) {
+                        qualityWinner = code;
+                        qualityBest = qualityVotes[code];
+                    }
+                });
+                if (ipv4Code && (qualityVotes[ipv4Code] || 0) >= 2) return ipv4Code;
+                if (ipv4Code && (votes[ipv4Code] || 0) >= 2) return ipv4Code;
+                if (qualityBest >= 2) return qualityWinner;
+                if (ipv4Code) return ipv4Code;
+
+                var winner = '';
+                var best = 0;
+                Object.keys(votes).forEach(function (code) {
+                    if (votes[code] > best) {
+                        winner = code;
+                        best = votes[code];
+                    }
+                });
+                return winner;
+            }
+
+            function finalize() {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                resolve(pickWinner());
+            }
+
+            items.forEach(function (item) {
+                Promise.resolve()
+                    .then(item.fn)
+                    .then(function (code) {
+                        if (settled) return;
+                        if (code) {
+                            votes[code] = (votes[code] || 0) + 1;
+                            if (item.ipv4) ipv4Code = code;
+                            if (item.quality) {
+                                qualityVotes[code] = (qualityVotes[code] || 0) + 1;
+                                if (item.ipv4 && qualityVotes[code] >= 2) finalize();
+                            }
+                        }
+                        if (--left <= 0) finalize();
+                    })
+                    .catch(function () {
+                        if (!settled && --left <= 0) finalize();
+                    });
+            });
+        });
     }
 
     async function getCountryCode() {
-        var sources = [
-            function () { return fetchCountry('https://ipinfo.io/json?token=5a58a2d85996e3'); },
-            function () { return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true); },
-            function () { return fetchCountry('https://ipwho.is/'); },
-            function () { return fetchCountry('https://ipapi.co/json/'); }
-        ];
+        try {
+            var cached = sessionStorage.getItem('__geo_cc_v3__');
+            if (cached && /^[A-Z]{2}$/.test(cached)) return cached;
+        } catch (e) { /* ignore */ }
 
-        for (var i = 0; i < sources.length; i++) {
-            try {
-                var code = await sources[i]();
-                if (code) return code;
-            } catch (e) { /* try next */ }
-        }
-        return '';
+        return voteCountry([
+            { quality: false, fn: function () { return fetchCountry('https://www.cloudflare.com/cdn-cgi/trace', true, 1800); } },
+            { quality: true, fn: function () { return fetchCountry('https://ipinfo.io/json?token=790b745aefcdac', false, 2000); } },
+            { quality: true, fn: function () { return fetchCountry('https://ipwho.is/', false, 2000); } },
+            { quality: true, fn: function () { return fetchCountry('https://ipapi.co/json/', false, 2000); } },
+            { quality: true, ipv4: true, fn: fetchIpv4Country }
+        ], 2200);
+    }
+
+    function isTranslated() {
+        return /translated-(ltr|rtl)/.test(document.documentElement.className);
     }
 
     function waitForTranslation(timeout) {
         return new Promise(function (resolve) {
-            var html = document.documentElement;
-            if (/translated-(ltr|rtl)/.test(html.className)) {
-                return resolve(true);
-            }
+            if (isTranslated()) return resolve(true);
             var timer = setTimeout(function () {
                 obs.disconnect();
-                resolve(/translated-(ltr|rtl)/.test(html.className));
-            }, timeout || 8000);
+                resolve(isTranslated());
+            }, timeout || 2500);
             var obs = new MutationObserver(function () {
-                if (/translated-(ltr|rtl)/.test(html.className)) {
+                if (isTranslated()) {
                     clearTimeout(timer);
                     obs.disconnect();
                     resolve(true);
                 }
             });
-            obs.observe(html, { attributes: true, attributeFilter: ['class'] });
+            obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         });
     }
 
     function waitForCombo(timeout) {
         return new Promise(function (resolve) {
-            var start = Date.now();
             var found = document.querySelector('.goog-te-combo');
             if (found) return resolve(found);
-
+            var start = Date.now();
             var timer = setInterval(function () {
                 var el = document.querySelector('.goog-te-combo');
-                if (el || Date.now() - start > (timeout || 8000)) {
+                if (el || Date.now() - start > (timeout || 2500)) {
                     clearInterval(timer);
                     resolve(el || null);
                 }
-            }, 80);
+            }, 40);
         });
     }
 
@@ -223,6 +310,7 @@
         var combo = document.querySelector('.goog-te-combo');
         if (!combo) return false;
         var want = langCandidates(lang);
+        if (want.indexOf(combo.value) !== -1) return true;
         var opts = combo.options;
         for (var w = 0; w < want.length; w++) {
             for (var i = 0; i < opts.length; i++) {
@@ -241,7 +329,7 @@
         if (host) return host;
         host = document.createElement('div');
         host.id = 'google_translate_element';
-        document.body.insertBefore(host, document.body.firstChild);
+        if (document.body) document.body.insertBefore(host, document.body.firstChild);
         return host;
     }
 
@@ -282,29 +370,50 @@
             script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
             script.async = true;
             script.onerror = done;
-            document.body.appendChild(script);
-            setTimeout(done, 8000);
+            (document.head || document.body).appendChild(script);
+            setTimeout(done, 4000);
         });
     }
+
+    var gtReady = loadGoogleTranslate();
+
+    document.addEventListener('mouseover', function (e) {
+        var node = e.target;
+        if (!node || !node.closest) return;
+        var tip = document.getElementById('goog-gt-tt');
+        if (tip) {
+            tip.style.setProperty('display', 'none', 'important');
+            tip.style.setProperty('visibility', 'hidden', 'important');
+        }
+        if (node.classList && node.classList.contains('goog-text-highlight')) {
+            node.classList.remove('goog-text-highlight');
+            node.style.setProperty('background', 'none', 'important');
+            node.style.setProperty('box-shadow', 'none', 'important');
+        }
+    }, true);
 
     async function applyLanguage(lang) {
         setGoogtransCookie(lang);
 
-        var existing = getGoogtransCookie();
-        if (existing !== '/en/' + lang) {
-            setGoogtransCookie(lang);
+        if (isTranslated()) {
+            var cookie = getGoogtransCookie() || '';
+            if (langCandidates(lang).some(function (code) { return cookie.indexOf('/' + code) !== -1; })) {
+                return;
+            }
         }
 
-        await loadGoogleTranslate();
-        await waitForCombo(8000);
-
+        await gtReady;
+        await waitForCombo(2500);
         selectTranslateLang(lang);
-        setTimeout(function () { selectTranslateLang(lang); }, 400);
+        await waitForTranslation(2500);
+
+        if (!isTranslated()) {
+            selectTranslateLang(lang);
+            await waitForTranslation(1500);
+        }
 
         var combo = document.querySelector('.goog-te-combo');
         if (combo && combo.value) setGoogtransCookie(combo.value);
-
-        await waitForTranslation(8000);
     }
 
     function langFromNavigator() {
@@ -322,9 +431,13 @@
             var countryCode = await getCountryCode();
             if (countryCode) {
                 window.__geoCountry = countryCode;
-                try { sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
+                try { sessionStorage.setItem('__geo_cc_v3__', countryCode); sessionStorage.setItem('__geo_cc__', countryCode); } catch (e) { /* ignore */ }
             }
             var targetLang = countryCode ? LANG_MAP[countryCode] : null;
+
+            if (!targetLang) {
+                try { targetLang = sessionStorage.getItem('__geo_lang__') || null; } catch (e) { targetLang = null; }
+            }
 
             if (!targetLang) {
                 var navLang = langFromNavigator();

@@ -153,6 +153,26 @@ iframe.goog-te-banner-frame,
     height: 0 !important;
 }
 
+#goog-gt-tt,
+.goog-te-balloon-frame,
+div#goog-gt-tt,
+.goog-tooltip,
+.goog-tooltip:hover {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.goog-text-highlight,
+font.goog-text-highlight,
+font font {
+    background: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+}
+
 .app-modal-overlay {
     z-index: 50;
     display: flex;
